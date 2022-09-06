@@ -1,2 +1,5 @@
 # 2D_game
-learning C++
+This is my first attempt to create simple 2D game while learning C++.
+
+# Technical information
+OS: Win_64
