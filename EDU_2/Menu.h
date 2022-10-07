@@ -33,8 +33,12 @@ private:
 	sf::Texture options_menu_Language_Texture;
 	sf::Sprite options_menu_Language_Sprite;
 
-	sf::Texture pause_menu_Texture;
-	sf::Sprite pause_menu_Sprite;
+	sf::Texture pause_menu_Mission_Texture;
+	sf::Sprite pause_menu_Mission_Sprite;
+
+	sf::Texture pause_menu_Orbit_Texture;
+	sf::Sprite pause_menu_Orbit_Sprite;
+
 
 	sf::Sprite mouse_pointer_Sprite;
 	sf::Texture mouse_pointer_Texture;
@@ -52,7 +56,7 @@ private:
 
 public:
 	Menu(sf::RenderWindow* window, std::string game_path);
-	int run(bool pause);
+	int run(bool pause, bool on_orbit);
 	void set_options_object(Options* game_options_from_main);
 	
 };

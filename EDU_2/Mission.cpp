@@ -12,6 +12,7 @@
 #include <cmath>
 #include "Custom_def.h"
 #include "Mission.h"
+#include "Game.h"
 
 Mission::Mission(sf::RenderWindow* window, std::string path)
 {
@@ -85,7 +86,7 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 	interface_equip_Texture.loadFromFile(game_path + "Assets\\Pictures\\Dialog_equipment.png");
 	interface_equip_Sprite.setTexture(interface_equip_Texture);
 
-	player_bullet_Texture.loadFromFile(game_path + "Assets\\Textures\\Bullets.png");
+	player_bullet_Texture.loadFromFile(game_path + "Assets\\Textures\\Player_Bullets.png");
 	player_bullet_Sprite.setTexture(player_bullet_Texture);
 
 	monster_Texture_1.loadFromFile(game_path + "Assets\\Textures\\Monsters_1.png");
@@ -121,6 +122,8 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 	nest_Texture.loadFromFile(game_path + "Assets\\Pictures\\Nest.png");
 	nest_Sprite.setTexture(nest_Texture);
 
+	tires_Texture.loadFromFile(game_path + "Assets\\Textures\\Tires.png");
+	tires_Sprite.setTexture(tires_Texture);
 
 	//загружаем шрифт
 	if (!font.loadFromFile(game_path + "Assets\\Fonts\\arialnb.ttf")) printf("font load error\n");
@@ -130,13 +133,14 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 	loot_array = (loot*)malloc(1000 * sizeof(loot));
 	if (loot_array == NULL) printf("malloc error loot array");
 
+	flying_loot_array = (flying_loot*)malloc(100 * sizeof(flying_loot));
+	if (flying_loot_array == NULL) printf("malloc error flying_loot array");
+
 	obj_array = (stationary_object*)malloc(100 * sizeof(stationary_object));
 	if (obj_array == NULL) printf("malloc error obj array");
 
 	equipment_array = (equipment*)malloc(1000 * sizeof(equipment));
 	if (equipment_array == NULL) printf("malloc error equipment array");
-
-	equipment_to_take = -1;
 
 	monster_array = (monster*)malloc(1000 * sizeof(monster));
 	if (monster_array == NULL) printf("malloc error monster array");
@@ -160,9 +164,25 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 	music_action.setVolume(20);
 
 	//открываем звуковые файлы
-	if (!buffer_gun_1.loadFromFile(game_path + "Assets\\Sound\\gun_1.wav"))  printf("Error load gun_1.wav\n");
+	if (!buffer_gun_1.loadFromFile(game_path + "Assets\\Sound\\shot_sound_1.wav"))  printf("Error load shot_sound_1.wav\n");
 	sound_gun_1.setBuffer(buffer_gun_1);//выстрел из пушки
 	sound_gun_1.setVolume(50);
+
+	if (!buffer_gun_2.loadFromFile(game_path + "Assets\\Sound\\shot_sound_2.wav"))  printf("Error load shot_sound_2.wav\n");
+	sound_gun_2.setBuffer(buffer_gun_2);//выстрел из пушки
+	sound_gun_2.setVolume(50);
+
+	if (!buffer_gun_3.loadFromFile(game_path + "Assets\\Sound\\shot_sound_3.wav"))  printf("Error load shot_sound_3.wav\n");
+	sound_gun_3.setBuffer(buffer_gun_3);//выстрел из пушки
+	sound_gun_3.setVolume(50);
+
+	if (!buffer_gun_4.loadFromFile(game_path + "Assets\\Sound\\shot_sound_4.wav"))  printf("Error load shot_sound_4.wav\n");
+	sound_gun_4.setBuffer(buffer_gun_4);//выстрел из пушки
+	sound_gun_4.setVolume(50);
+
+	if (!buffer_gun_5.loadFromFile(game_path + "Assets\\Sound\\shot_sound_5.wav"))  printf("Error load shot_sound_5.wav\n");
+	sound_gun_5.setBuffer(buffer_gun_5);//выстрел из пушки
+	sound_gun_5.setVolume(50);
 
 	if (!buffer_bite_1.loadFromFile(game_path + "Assets\\Sound\\bite_1.wav"))  printf("Error load bite_1.wav\n");
 	sound_bite_1.setBuffer(buffer_bite_1);//укус монстра
@@ -175,6 +195,14 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 	if (!buffer_hit_2.loadFromFile(game_path + "Assets\\Sound\\hit_2.wav"))  printf("Error load hit_2.wav\n");
 	sound_hit_2.setBuffer(buffer_hit_2);//удар снаряда в плоть
 	sound_hit_2.setVolume(50);
+
+	if (!buffer_hit_3.loadFromFile(game_path + "Assets\\Sound\\hit_3.wav"))  printf("Error load hit_3.wav\n");
+	sound_hit_3.setBuffer(buffer_hit_3);//удар снаряда в плоть
+	sound_hit_3.setVolume(50);
+
+	if (!buffer_hit_4.loadFromFile(game_path + "Assets\\Sound\\hit_4.wav"))  printf("Error load hit_4.wav\n");
+	sound_hit_4.setBuffer(buffer_hit_4);//удар снаряда в плоть
+	sound_hit_4.setVolume(50);
 
 	if (!buffer_death_1.loadFromFile(game_path + "Assets\\Sound\\death_1.wav"))  printf("Error load death_1.wav\n");
 	sound_death_1.setBuffer(buffer_death_1);//смерть монстра
@@ -197,12 +225,17 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 int Mission::run(sf::Time elapsed)
 {
 	//основной цикл игры
-
+	render_res_X = floor(game_window->getView().getSize().x);
+	render_res_Y = floor(game_window->getView().getSize().y);
 	//запускаем музыку если она не играет
 	if (music_action.getStatus() != sf::SoundSource::Status::Playing) music_action.play();
 
 	//прошло времени с микросекундах
 	elapsed_ms = elapsed.asMilliseconds();
+
+	//подзарядка генератора
+	Rover.Energy += Rover.Generate_speed / 1000.0 * elapsed_ms;
+	if (Rover.Energy > Rover.Energy_MAX) Rover.Energy = Rover.Energy_MAX;
 
 	//уменьшаем значения счетчиков
 	if (pause_delay_timer > 0) pause_delay_timer -= elapsed_ms;
@@ -210,6 +243,10 @@ int Mission::run(sf::Time elapsed)
 	if (loot_gen_timer <= 0) generate_loot(); //генерация лута
 	monster_gen_timer -= elapsed_ms;
 	if (monster_gen_timer <= 0) generate_monsters();//генерация монстров
+
+	//сбрасываем взятые предметы
+	weapon_to_take = - 1;
+	upgrage_to_take = -1;
 
 	//очистка окна
 	game_window->clear(sf::Color::Black); //очистка окна
@@ -232,11 +269,14 @@ int Mission::run(sf::Time elapsed)
 	//рисуем лут
 	draw_loot();
 
-	//рисуем оборудование
-	draw_equipment();
+	//рисуем оборудование  DEL
+	//draw_equipment(); 
 
 	//рисуем персонажа
 	draw_character();
+
+	//рисуем разлетающиеся предметы
+	draw_flying_loot();
 
 	//рисуем мобов
 	draw_monsters();
@@ -259,20 +299,31 @@ int Mission::run(sf::Time elapsed)
 	{
 		//делаем скриншот
 		sf::Vector2u windowSize = game_window->getSize();
-		screnshot_Texture.create(windowSize.x, windowSize.y);
-		screnshot_Texture.update(*game_window);
+		screenshot_Texture.create(windowSize.x, windowSize.y);
+		screenshot_Texture.update(*game_window);
 		pause_delay_timer = 200;//выставляем таймер 
 		return(1);				//и ставим на паузу
 	}
-	if (equipment_to_take != -1)
+	if (weapon_to_take != -1)
 	{
 		//делаем скриншот экрана
 		sf::Vector2u windowSize = game_window->getSize();
-		screnshot_Texture.create(windowSize.x, windowSize.y);
-		screnshot_Texture.update(*game_window);
+		screenshot_Texture.create(windowSize.x, windowSize.y);
+		screenshot_Texture.update(*game_window);
 		//printf("Screenshot!\n");
-		return (2); //если берем оборудование - меняем состояние игры
+		return (2); //если берем оружие - меняем состояние игры
 	}
+
+	if (upgrage_to_take != -1)
+	{
+		//делаем скриншот экрана
+		sf::Vector2u windowSize = game_window->getSize();
+		screenshot_Texture.create(windowSize.x, windowSize.y);
+		screenshot_Texture.update(*game_window);
+		//printf("Screenshot!\n");
+		return (6); //если берем upgrage - меняем состояние игры
+	}
+
 
 	//обработка нажатия кнопки Е
 
@@ -286,8 +337,8 @@ int Mission::run(sf::Time elapsed)
 				//вход в базу
 				//printf("[E] Enter Base");
 				sf::Vector2u windowSize = game_window->getSize();
-				screnshot_Texture.create(windowSize.x, windowSize.y);
-				screnshot_Texture.update(*game_window);
+				screenshot_Texture.create(windowSize.x, windowSize.y);
+				screenshot_Texture.update(*game_window);
 				return (4);
 			}
 
@@ -296,8 +347,8 @@ int Mission::run(sf::Time elapsed)
 			//рядом выход
 			//printf("[E] Evacuate");
 			sf::Vector2u windowSize = game_window->getSize();
-			screnshot_Texture.create(windowSize.x, windowSize.y);
-			screnshot_Texture.update(*game_window);
+			screenshot_Texture.create(windowSize.x, windowSize.y);
+			screenshot_Texture.update(*game_window);
 			//music_action.stop();//вырубаем музон
 			return (5);
 		}
@@ -307,8 +358,8 @@ int Mission::run(sf::Time elapsed)
 	if (Rover.Health <= 0) //смерть
 	{
 		sf::Vector2u windowSize = game_window->getSize();
-		screnshot_Texture.create(windowSize.x, windowSize.y);
-		screnshot_Texture.update(*game_window);
+		screenshot_Texture.create(windowSize.x, windowSize.y);
+		screenshot_Texture.update(*game_window);
 		return (5);
 	}
 
@@ -331,6 +382,7 @@ int Mission::start()
 
 int Mission::pause(sf::Time elapsed)
 {
+	/*
 	//запрашиваем размеры окна
 	sf::Vector2u new_win_size = game_window->getSize();
 	double kx = new_win_size.x / 1920.0;
@@ -341,7 +393,7 @@ int Mission::pause(sf::Time elapsed)
 	//printf("%i", pause_delay_timer);
 	sf::Sprite screenshot_Sprite;
 
-	screenshot_Sprite.setTexture(screnshot_Texture);
+	screenshot_Sprite.setTexture(screenshot_Texture);
 	screenshot_Sprite.setColor(sf::Color(255, 255, 255, 50));
 	game_window->clear(sf::Color::Black);
 	game_window->draw(screenshot_Sprite);
@@ -412,7 +464,7 @@ int Mission::pause(sf::Time elapsed)
 			}
 		}
 	}
-
+	*/
 	return (0);//пауза продолжается
 }
 
@@ -454,45 +506,70 @@ int Mission::generate_loot()
 
 	//генерируем лут и апгрейды вокруг игрока
 
-	int LOOT_ITEMS_TO_GEN = 5;
+	int LOOT_ITEMS_TO_GEN = 10;
 	int LOOT_ITEMS_ADDED = 0;
 
-	int EQUIP_ITEMS_TO_GEN = 50;
+	int EQUIP_ITEMS_TO_GEN = 1;
 	int EQUIP_ITEMS_ADDED = 0;
 
 	//цикл генерации для лута
 	for (int i = 0; i < LOOT_ITEMS_TO_GEN; ++i)
 	{
 		double NEW_X = (rand() * 4000.0 / RAND_MAX - 2000.0);// 4000  2000
-		if (NEW_X < 0) NEW_X -= 1200 * GAME_RENDER_SCALE; else NEW_X += 1200 * GAME_RENDER_SCALE;  // 1200
+		if (NEW_X < 0) NEW_X -= 120 * GAME_RENDER_SCALE; else NEW_X += 120 * GAME_RENDER_SCALE;  // 1200
 		double NEW_Y = (rand() * 4000.0 / RAND_MAX - 2000.0);  //4000 2000
-		if (NEW_Y < 0) NEW_Y -= 800 * GAME_RENDER_SCALE; else NEW_Y += 800 * GAME_RENDER_SCALE; //800
+		if (NEW_Y < 0) NEW_Y -= 80 * GAME_RENDER_SCALE; else NEW_Y += 80 * GAME_RENDER_SCALE; //800
 		NEW_X += (Rover.player_coord_X - Rover.player_offset_X);
 		NEW_Y += (Rover.player_coord_Y - Rover.player_offset_Y);
 
 		//если координаты не попадают в область уже генерированного лута - добавляем в массив
 
-		if (NEW_X < gen_loot_min_X || NEW_X > gen_loot_max_X || NEW_Y < gen_loot_min_Y || NEW_Y > gen_loot_max_Y)
+		if (NEW_X < gen_loot_min_X || NEW_X > gen_loot_max_X || NEW_Y < gen_loot_min_Y || NEW_Y > gen_loot_max_Y || 1)  //отключить потом
 		{
-			char type = floor(2.999 * rand() / RAND_MAX);
-			int power_rnd = floor(190.0 * rand() / RAND_MAX);
-			unsigned char power = 0;
-			if (power_rnd < 100) power = 50;
-			else
+			char type = 5 + floor(8.0 * rand() / (RAND_MAX+1)); //0 - health, 1 - energy, 2 - health+energy, 3 - metal, 4 - crystal, 5 - uran, 6 - upgrade, 7 - weapon
+			int power_rnd = floor(100.0 * rand() / (RAND_MAX+1));
+			unsigned int power = 0;
+			if (type < 3)
 			{
-				if (power_rnd < 150) power = 100;
+				//определяем мощность восстановителей
+				if (power_rnd < 50) power = 50;
 				else
 				{
-					if (power_rnd < 175) power = 150;
+					if (power_rnd < 75) power = 100;
 					else
 					{
-						if (power_rnd < 185) power = 200;
-						else power = 250;
+						if (power_rnd < 88) power = 150;
+						else
+						{
+							if (power_rnd < 95) power = 200;
+							else power = 250;
+						}
 					}
 				}
 			}
-			//добавляем данные в массив лута
+			
+			if (type > 2 && type < 6)
+			{
+				//кол-во ресов
+				power = 1 + floor(power_rnd / 50.0);
+			}
 
+			if (type == 6)
+			{
+				//апгрейд
+				power = (int)floor(rand() * 5.0 / (RAND_MAX + 1)); //пулемет, ракета и т.п.;
+
+			}
+
+			if (type == 7)
+			{
+				//оружие
+				int weapon_type = (int)floor(rand() * 6.0 / (RAND_MAX + 1)); //пулемет, ракета и т.п.
+				int weapon_color = (int)floor(rand() * 5.0 / (RAND_MAX + 1)); //серое, золотое и т.п.
+				power = weapon_type | (weapon_color << 8);
+			}
+
+			//добавляем данные в массив лута
 			if (loot_count < 1000)
 			{
 
@@ -502,8 +579,8 @@ int Mission::generate_loot()
 				loot_array[new_item].isValid = 1;
 				loot_array[new_item].type = type;
 				loot_array[new_item].power = power;
-				loot_array[new_item].X = NEW_X;
-				loot_array[new_item].Y = NEW_Y;
+				loot_array[new_item].X = floor(NEW_X);
+				loot_array[new_item].Y = floor(NEW_Y);
 				//printf("loot added # %5i = %5i, %5i, (%0f, %0f) \n", new_item, type, power, NEW_X, NEW_Y);
 				//обновляем информацию о границах области генерации лута
 				if (NEW_X < gen_loot_min_X) gen_loot_min_X = NEW_X;
@@ -520,7 +597,7 @@ int Mission::generate_loot()
 
 	//printf("loot added = %i \n", LOOT_ITEMS_ADDED);
 
-	//цикл генерации для апгрейдов и оружия
+	//цикл генерации для апгрейдов и оружия  DEL
 	for (int i = 0; i < EQUIP_ITEMS_TO_GEN; ++i)
 	{
 		double NEW_X = (rand() * 4000.0 / RAND_MAX - 2000.0);// 4000  2000
@@ -532,7 +609,7 @@ int Mission::generate_loot()
 
 		//если координаты не попадают в область уже генерированного лута - добавляем в массив
 
-		if (NEW_X < gen_loot_min_X || NEW_X > gen_loot_max_X || NEW_Y < gen_loot_min_Y || NEW_Y > gen_loot_max_Y)
+		if (NEW_X < gen_loot_min_X || NEW_X > gen_loot_max_X || NEW_Y < gen_loot_min_Y || NEW_Y > gen_loot_max_Y )
 		{
 			unsigned char type = floor(1.999 * rand() / RAND_MAX);
 			double dist = sqrt(NEW_X * NEW_X + NEW_Y * NEW_Y);
@@ -573,6 +650,9 @@ int Mission::generate_loot()
 
 void Mission::draw_interface(sf::Vector2i localPosition)
 {
+	double kx = render_res_X / 1920.0;
+	double ky = render_res_Y / 1080.0;
+	
 	interface_Sprite.setScale(render_res_X / 1920.0, render_res_Y / 1080.0);
 	game_window->draw(interface_Sprite);
 
@@ -586,9 +666,7 @@ void Mission::draw_interface(sf::Vector2i localPosition)
 	text.setString(buffer);
 	//game_window->draw(text);
 
-	//рисуем курсор в виде прицела
-	mouse_pointer_2_Sprite.setPosition((float)localPosition.x - 10, (float)localPosition.y - 10);
-	game_window->draw(mouse_pointer_2_Sprite);
+
 
 	//рисуем здоровье
 	if (Rover.Health < 0) Rover.Health = 0;
@@ -605,17 +683,35 @@ void Mission::draw_interface(sf::Vector2i localPosition)
 	game_window->draw(energy_rectangle);
 
 	//печатаем кол-во денег
-	sprintf_s(buffer, "%i RUB", Rover.collected_money);
-	text.setCharacterSize(40); // in pixels, not points!
-	text.setScale(render_res_X / 1920.0, render_res_Y / 1080.0);
+	
+	text.setCharacterSize(25); // in pixels, not points!
+	text.setScale(kx, ky);
 	text.setFillColor(sf::Color::Yellow);
+	text.setOrigin(0, 0);
+	sprintf_s(buffer, "%i", Rover.collected_money);
 	text.setString(buffer);
-	sf::FloatRect bounds = text.getLocalBounds();
-	text.setOrigin(bounds.width, 0);
-	text.setPosition(430.0 * render_res_X / 1920.0, 2.0 * render_res_Y / 1080.0);
+	text.setPosition(190.0 * kx, 15.0 * ky);
 	game_window->draw(text);
-	//printf("%0.0f %0.0f\n", bounds.width, bounds.height);
+	
+	//уран
+	sprintf_s(buffer, "%i", Rover.collected_uran);
+	text.setString(buffer);
+	text.setPosition(345.0 * kx, 15.0 * ky);
+	game_window->draw(text);
 
+	//кристалл
+	sprintf_s(buffer, "%i", Rover.collected_crystal);
+	text.setString(buffer);
+	text.setPosition(494.0 * kx, 15.0 * ky);
+	game_window->draw(text);
+
+	//металл
+	sprintf_s(buffer, "%i", Rover.collected_metal);
+	text.setString(buffer);
+	text.setPosition(643.0 * kx, 15.0 * ky);
+	game_window->draw(text);
+
+	sf::FloatRect bounds;
 	//рисуем кнопку активации
 	//проверяем наличие рядом объекта нужного типа
 	int obj_near = check_obj_collision(Rover.player_coord_X, Rover.player_coord_Y, 300.0f);
@@ -685,10 +781,24 @@ void Mission::draw_interface(sf::Vector2i localPosition)
 		}
 	}
 	//sf::sleep(sf::seconds(1));
+	//рисуем иконку оружия
+
+	weapon_tile_Sprite.setTextureRect(sf::IntRect(0, Rover.weapon.sprite_N * 200, 200, 200));
+	weapon_tile_Sprite.setPosition((1768.0 + 60.0) * kx, (935.0 + 90.0) * ky);
+	weapon_tile_Sprite.setScale(121.0 / 200.0 * 1.2 * kx, 121.0 / 200.0 * 1.2 * ky);
+	weapon_tile_Sprite.setRotation(-90.0);
+	game_window->draw(weapon_tile_Sprite);
+
+	//рисуем курсор в виде прицела
+	mouse_pointer_2_Sprite.setPosition((float)localPosition.x - 10, (float)localPosition.y - 10);
+	game_window->draw(mouse_pointer_2_Sprite);
+
+
 }
 
 int Mission::take_equipment()
 {
+	/*
 	double int_scale_x = render_res_X / 1920.0;
 	double int_scale_y = render_res_Y / 1080.0;
 	sf::Sprite screenshot_Sprite;
@@ -792,8 +902,9 @@ int Mission::take_equipment()
 		}
 	}
 
-	//sf::sleep(sf::milliseconds(1000));
+	//sf::sleep(sf::milliseconds(1000));*/
 	return (0);//продолжаем выполнение подпрограммы
+	
 }
 
 void Mission::set_render_scale(double scale)
@@ -814,7 +925,12 @@ void Mission::draw_terrain()
 		for (int j = top_tile; j >= bottom_tile; --j)
 		{
 			int num = rnd_from_coord(i, j, 19);
-			bg_tile_Sprite.setTextureRect(sf::IntRect(num * 100, 0, land_tile_size + 1, land_tile_size + 1));
+			
+			bg_tile_Sprite.setOrigin(0, 0);
+			bg_tile_Sprite.setColor(sf::Color(255, 255, 255, 255));
+			//if (i == 3 && j == 3) bg_tile_Sprite.setColor(sf::Color(0, 0, 255, 220));
+			//if (i == 0 && j == 0) bg_tile_Sprite.setColor(sf::Color(0, 255, 0, 220));
+			bg_tile_Sprite.setTextureRect(sf::IntRect(num * 100, (planet_type - 1)* 100, land_tile_size + 1, land_tile_size + 1));
 			bg_tile_Sprite.setPosition(i * ((double)land_tile_size / GAME_RENDER_SCALE) + render_res_X / 2 - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X), -(j + 1) * ((double)land_tile_size / GAME_RENDER_SCALE) + (Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y) + render_res_Y / 2);
 			bg_tile_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
 			game_window->draw(bg_tile_Sprite);
@@ -842,6 +958,7 @@ void Mission::draw_loot()
 				if (abs(loot_array[loot_index].X - Rover.player_coord_X) < 100 && abs(loot_array[loot_index].Y - Rover.player_coord_Y) < 100)
 				{
 					//"потребляем" лут
+					//0 - health, 1 - energy, 2 - health+energy, 3 - metal, 4 - crystal, 5 - uran
 
 					if (loot_array[loot_index].type == 0)
 					{
@@ -885,8 +1002,43 @@ void Mission::draw_loot()
 						//printf("health = %0f, energy = %0f\n", Rover.Health, Rover.Energy);
 					}
 
-					//printf("loot eaten\n");
+					if (loot_array[loot_index].type == 3)
+					{
+						//3 - metal, 4 - crystal, 5 - uran
+							Rover.collected_metal += loot_array[loot_index].power;
+							loot_array[loot_index].isValid = 0;
+							loot_count--;
+					}
+					if (loot_array[loot_index].type == 4)
+					{
+						//3 - metal, 4 - crystal, 5 - uran
+						Rover.collected_crystal += loot_array[loot_index].power;
+						loot_array[loot_index].isValid = 0;
+						loot_count--;
+					}
+					
+					if (loot_array[loot_index].type == 5)
+					{
+						//3 - metal, 4 - crystal, 5 - uran
+						Rover.collected_uran += loot_array[loot_index].power;
+						loot_array[loot_index].isValid = 0;
+						loot_count--;
+					}
 
+					if (loot_array[loot_index].type == 6 && upgrage_to_take == -1)
+					{
+						//6 - upgrade
+						upgrage_to_take = loot_array[loot_index].power;
+						loot_array[loot_index].isValid = 0;
+						loot_count--;
+					}
+					if (loot_array[loot_index].type == 7 && upgrage_to_take == -1)
+					{
+						//7 - weapon
+						weapon_to_take = loot_array[loot_index].power;
+						loot_array[loot_index].isValid = 0;
+						loot_count--;
+					}
 				}
 
 				if (loot_array[loot_index].isValid == 1)
@@ -894,8 +1046,24 @@ void Mission::draw_loot()
 					//рисуем лут
 					int tile_offset = loot_array[loot_index].type * 100;
 					loot_Sprite.setTextureRect(sf::IntRect(tile_offset, 0, 100, 100));
-					loot_Sprite.setPosition(loot_array[loot_index].X / GAME_RENDER_SCALE - 50.0 / GAME_RENDER_SCALE - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2), Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - loot_array[loot_index].Y / GAME_RENDER_SCALE - 50.0 / GAME_RENDER_SCALE);
+					loot_Sprite.setPosition(loot_array[loot_index].X / GAME_RENDER_SCALE - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2), Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - loot_array[loot_index].Y / GAME_RENDER_SCALE);
+					loot_Sprite.setOrigin(50,50);
 					loot_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+					if (loot_array[loot_index].type == 7)
+					{
+						//дорисовываем цвет оружия
+						int color = loot_array[loot_index].power >> 8;
+						sf::CircleShape shape(60.f);
+						shape.setOrigin(60.0, 60.0);
+						shape.setPosition(loot_array[loot_index].X / GAME_RENDER_SCALE - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2), Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - loot_array[loot_index].Y / GAME_RENDER_SCALE);
+						shape.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+						if (color == 0) shape.setFillColor(sf::Color(128, 128, 128, 70));
+						if (color == 1) shape.setFillColor(sf::Color(0,   255,   0, 70));
+						if (color == 2) shape.setFillColor(sf::Color(0,   255, 255, 70));
+						if (color == 3) shape.setFillColor(sf::Color(255,   0, 255, 70));
+						if (color == 4) shape.setFillColor(sf::Color(255, 255,   0, 70));
+						game_window->draw(shape);
+					}
 					game_window->draw(loot_Sprite);
 				}
 
@@ -911,6 +1079,7 @@ void Mission::draw_loot()
 
 void Mission::draw_equipment()
 {
+	/*
 	int equipment_index = 0;
 	int equipment_processed = 0;
 	while (equipment_processed < equipment_count)
@@ -929,7 +1098,7 @@ void Mission::draw_equipment()
 				else
 				{
 					//рисуем оборудование
-					int tile_offset = (equipment_array[equipment_index].type + 3) * 100;
+					int tile_offset = (equipment_array[equipment_index].type + 6) * 100;
 					loot_Sprite.setTextureRect(sf::IntRect(tile_offset, 0, 100, 100));
 					loot_Sprite.setPosition(equipment_array[equipment_index].X / GAME_RENDER_SCALE - 50.0 / GAME_RENDER_SCALE - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2), Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - equipment_array[equipment_index].Y / GAME_RENDER_SCALE - 50.0 / GAME_RENDER_SCALE);
 					loot_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
@@ -942,7 +1111,7 @@ void Mission::draw_equipment()
 	}
 
 
-
+	*/
 }
 
 void Mission::draw_character()
@@ -952,9 +1121,11 @@ void Mission::draw_character()
 	if (Rover.animation_time > Rover.animation_time_MAX) Rover.animation_time -= Rover.animation_time_MAX;
 
 	body_tile_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X, render_res_Y / 2 - Rover.player_offset_Y);
-	body_tile_Sprite.setTextureRect(sf::IntRect(round(Rover.animation_time / Rover.animation_time_MAX) * 7 * 200, (Rover.body_direction - 1) * 200, 200, 200));
+	//body_tile_Sprite.setTextureRect(sf::IntRect(round(Rover.animation_time / Rover.animation_time_MAX) * 7 * 200, (Rover.body_direction - 1) * 200, 200, 200));
+	body_tile_Sprite.setTextureRect(sf::IntRect(round(Rover.animation_time / Rover.animation_time_MAX) * 7 * 200, 0, 200, 200));
 	body_tile_Sprite.setOrigin(100.0, 100.0);
 	body_tile_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+	body_tile_Sprite.setRotation(-Rover.Speed_direction * 180.0 / 3.1415926);
 	game_window->draw(body_tile_Sprite);
 
 	//рисуем пушку
@@ -963,11 +1134,23 @@ void Mission::draw_character()
 	if (Rover.weapon_animation_time > Rover.weapon_animation_time_MAX) Rover.weapon_animation_time -= Rover.weapon_animation_time_MAX;
 
 	weapon_tile_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X, render_res_Y / 2 - Rover.player_offset_Y);
-	weapon_tile_Sprite.setTextureRect(sf::IntRect(round(Rover.weapon_animation_time / Rover.weapon_animation_time_MAX) * 7 * 200, (Rover.weapon_direction - 1) * 200, 200, 200));
+	//weapon_tile_Sprite.setTextureRect(sf::IntRect(round(Rover.weapon_animation_time / Rover.weapon_animation_time_MAX) * 7 * 200, (Rover.weapon_direction - 1) * 200, 200, 200));
+	weapon_tile_Sprite.setTextureRect(sf::IntRect(round(Rover.weapon_animation_time / Rover.weapon_animation_time_MAX) * 7 * 200, Rover.weapon.sprite_N * 200, 200, 200));
 	weapon_tile_Sprite.setOrigin(100.0, 100.0);
 	weapon_tile_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+	weapon_tile_Sprite.setRotation(-Rover.weapon_direction_rad * 180.0 / 3.1415926);
 	game_window->draw(weapon_tile_Sprite);
 
+	//рассчитываем удаленность от последней точки и рисуем след
+
+	double dist = sqrt((Rover.tires_XY[0] - Rover.player_coord_X) * (Rover.tires_XY[0] - Rover.player_coord_X) + (Rover.tires_XY[1] - Rover.player_coord_Y)* (Rover.tires_XY[1] - Rover.player_coord_Y));
+	if (dist >= 230.0)
+	{
+		Rover.tires_XY[0] = Rover.player_coord_X;
+		Rover.tires_XY[1] = Rover.player_coord_Y;
+		create_VFX_remains(Rover.player_coord_X, Rover.player_coord_Y, 4, -Rover.Speed_direction * 180.0 / 3.1415926); // 3 - шины
+		//printf("%f\n", Rover.Speed_direction * 180.0 / 3.1415926);
+	}
 
 }
 
@@ -977,38 +1160,21 @@ void Mission::controls_processing(sf::Vector2i localPosition)
 	int player_D_y = 0;
 	player_weapon_cooldown -= elapsed_ms; //охлаждаем ствол
 	if (player_weapon_cooldown < 0) player_weapon_cooldown = 0;
-
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) //движение вверх
-	{
-		player_D_y++;//для определения направленияц
-	}
-
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) || sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) //движение вниз
-	{
-		player_D_y--;
-	}
-
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A) || sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) //движение влево
-	{
-		player_D_x--;
-	}
-
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D) || sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) //движение вправо
-	{
-		player_D_x++;
-	}
-
+	
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W) || sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) player_D_y++;//движение вверх
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) || sf::Keyboard::isKeyPressed(sf::Keyboard::Down)) player_D_y--;//движение вниз
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A) || sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) player_D_x--;//движение влево
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D) || sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) player_D_x++;//движение вправо
+	
 	//определение направления движения игрока
-	{
-		if (player_D_x == 0 && player_D_y == 1) Rover.body_direction = 1;
-		if (player_D_x == 1 && player_D_y == 1) Rover.body_direction = 2;
-		if (player_D_x == 1 && player_D_y == 0) Rover.body_direction = 3;
-		if (player_D_x == 1 && player_D_y == -1) Rover.body_direction = 4;
-		if (player_D_x == 0 && player_D_y == -1) Rover.body_direction = 5;
-		if (player_D_x == -1 && player_D_y == -1) Rover.body_direction = 6;
-		if (player_D_x == -1 && player_D_y == 0) Rover.body_direction = 7;
-		if (player_D_x == -1 && player_D_y == 1) Rover.body_direction = 8;
-	}
+	if (player_D_x == 0 && player_D_y == 1) Rover.body_direction = 1;
+	if (player_D_x == 1 && player_D_y == 1) Rover.body_direction = 2;
+	if (player_D_x == 1 && player_D_y == 0) Rover.body_direction = 3;
+	if (player_D_x == 1 && player_D_y == -1) Rover.body_direction = 4;
+	if (player_D_x == 0 && player_D_y == -1) Rover.body_direction = 5;
+	if (player_D_x == -1 && player_D_y == -1) Rover.body_direction = 6;
+	if (player_D_x == -1 && player_D_y == 0) Rover.body_direction = 7;
+	if (player_D_x == -1 && player_D_y == 1) Rover.body_direction = 8;
 
 	move_player((player_D_x != 0 || player_D_y != 0) ? 1 : 0); //двигаем игрока с учетом инерции и препятствий
 
@@ -1017,7 +1183,7 @@ void Mission::controls_processing(sf::Vector2i localPosition)
 		GAME_RENDER_SCALE -= 0.05;
 		if (GAME_RENDER_SCALE < 1) GAME_RENDER_SCALE = 1;
 		set_render_scale(GAME_RENDER_SCALE);
-		//printf("render scale = %1.1f\n", GAME_RENDER_SCALE);
+		printf("render scale = %1.1f\n", GAME_RENDER_SCALE);
 	}
 
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Subtract)) //масштаб -
@@ -1028,11 +1194,14 @@ void Mission::controls_processing(sf::Vector2i localPosition)
 		//printf("render scale = %1.1f\n", GAME_RENDER_SCALE);
 	}
 
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) //масштаб 2
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Enter)) GAME_RENDER_SCALE = 2;//масштаб 2
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace))//тестовый разброс ресурсов
 	{
-		GAME_RENDER_SCALE = 2;
+		double x = ((Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2) + localPosition.x) * GAME_RENDER_SCALE;
+		double y = (Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - localPosition.y) * GAME_RENDER_SCALE;
+		//drop_flying_loot(2, 2, 2, x, y); 
+		//sf::sleep(sf::milliseconds(100));
 	}
-
 
 	//считаем угол между игроком и курсором
 	int D_x = localPosition.x - (render_res_X / 2 + Rover.player_offset_X);
@@ -1062,42 +1231,47 @@ void Mission::controls_processing(sf::Vector2i localPosition)
 			if (player_bullet_array[new_item].isAlive == 0)//еще раз проверяем, что позиция не занята
 			{
 				player_bullet_array[new_item].isAlive = 1;
-				player_bullet_array[new_item].type = 1;
-				player_bullet_array[new_item].power = 5;
-				player_bullet_array[new_item].speed = 2000;
-				player_bullet_array[new_item].power = 5;
+				player_bullet_array[new_item].type = Rover.weapon.get_ammo_type();
+				player_bullet_array[new_item].power = Rover.weapon.power * 10;  //убрать множитель
+				player_bullet_array[new_item].speed = Rover.weapon.get_ammo_speed();
 				if (Rover.weapon_direction_rad > 3.1415926) player_bullet_array[new_item].direction = Rover.weapon_direction_rad - 2 * 3.141926;
 				else player_bullet_array[new_item].direction = Rover.weapon_direction_rad;
-				player_bullet_array[new_item].power = 5;
 				player_bullet_array[new_item].X = Rover.player_coord_X + cos(player_bullet_array[new_item].direction) * 100.0;
 				player_bullet_array[new_item].Y = Rover.player_coord_Y + sin(player_bullet_array[new_item].direction) * 100.0;
-				player_bullet_array[new_item].ttl = 4000;//time to live
+				player_bullet_array[new_item].ttl = Rover.weapon.get_ammo_ttl();//time to live
 				player_bullet_count++;
-				//рассчитываем скорость пули по осям в секунду
-				//printf("fire %0.0f %0.0f \n", player_bullet_array[new_item].X, player_bullet_array[new_item].Y);
-				player_weapon_cooldown = 1000.0 / Rover.fire_rate;
-				sound_gun_1.play();//звук выстрела
+				player_weapon_cooldown = 1000.0 / (Rover.weapon.fire_rate * Rover.fire_rate_boost);
+				if (Rover.weapon.get_shot_sound() == 1) { sound_gun_1.setVolume(game_options->sound_volume); sound_gun_1.play(); } //звук выстрела
+				if (Rover.weapon.get_shot_sound() == 2) { sound_gun_2.setVolume(game_options->sound_volume); sound_gun_2.play(); } //звук выстрела
+				if (Rover.weapon.get_shot_sound() == 3) { sound_gun_3.setVolume(game_options->sound_volume); sound_gun_3.play(); } //звук выстрела
+				if (Rover.weapon.get_shot_sound() == 4) { sound_gun_4.setVolume(game_options->sound_volume); sound_gun_4.play(); } //звук выстрела
+				if (Rover.weapon.get_shot_sound() == 5) { sound_gun_5.setVolume(game_options->sound_volume); sound_gun_5.play(); } //звук выстрела
 			}
 		}
+	}
+	
+	//проверяем нажатие на кнопку RMB и доступность оружия
+	if (sf::Mouse::isButtonPressed(sf::Mouse::Right) && player_weapon_cooldown == 0)
+	{
+		printf("RMB\n");
 	}
 
 	//тестовая информация
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Multiply))
 	{
-		//printf("Monster_count = %i\n", monster_count);
-		/*
-		int counter = 0;
-		for (int i = 0; i < 1000; ++i)
+		printf("Flying loot\n");
+		for (int i = 0; i < 100; ++i)
 		{
-			if (monster_array[i].isAlive == 1)
+			if (flying_loot_array[i].isValid)
 			{
-				counter++;
-				printf("n=%4i  spr=%4i  att_type=%i\n", i, monster_array[i].sprite_N, monster_array[i].attack_type);
+				printf("i=%4i  dX=%0.0f dY=%0.0f Vel=%0.0f ttl=%0.0f\n", i, flying_loot_array[i].dX, flying_loot_array[i].dY, flying_loot_array[i].V_Velocity, flying_loot_array[i].ttl);
 			}
 		}
 		sf::sleep(sf::milliseconds(300));
 		//printf("monsters_in_array=%i \n", counter);
-		*/
+		
+		
+		/*
 		printf("\n\nDebug info = Rover\n");
 		printf("planet_type %i\n", planet_type);
 		printf("planet_level %i\n", planet_level);
@@ -1108,10 +1282,11 @@ void Mission::controls_processing(sf::Vector2i localPosition)
 		printf("Rover.Generate_speed %0.1f\n", Rover.Generate_speed);
 		printf("Rover.Speed_MAX %0.1f\n", Rover.Speed_MAX);
 		printf("Rover.gun_damage %0.1f\n", Rover.gun_damage);
-		printf("Rover.fire_rate %0.1f\n", Rover.fire_rate);
+		printf("Rover.fire_rate %0.1f\n", Rover.weapon.fire_rate);
 		printf("Rover.slots %i\n", Rover.slots);
 		printf("Rover.weapon_direction_rad %0.1f\n", Rover.weapon_direction_rad);
-
+		*/
+		
 	}
 }
 
@@ -1146,16 +1321,32 @@ void Mission::draw_bullets()
 						{
 							//фиксируем попадание
 							monster_array[j].health -= player_bullet_array[i].power; //уменьшаем здоровье монстра
-							sound_hit_2.play();
+							
+							if (player_bullet_array[i].type == 0) { sound_hit_2.setVolume(game_options->sound_volume); sound_hit_2.play(); create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 0, 1.0); } //попадание снаряда
+							if (player_bullet_array[i].type == 1) { sound_hit_2.setVolume(game_options->sound_volume); sound_hit_2.play(); create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 0, 1.0); }
+							if (player_bullet_array[i].type == 2) {	make_explosion(player_bullet_array[i].X, player_bullet_array[i].Y, player_bullet_array[i].power, false, true);} //взрыв ракеты - отдельная процедура
+							if (player_bullet_array[i].type == 3) { sound_hit_4.setVolume(game_options->sound_volume); sound_hit_4.play(); create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 5, 2.0);} //взрыв плазмы
+							if (player_bullet_array[i].type == 4) { sound_hit_3.setVolume(game_options->sound_volume); sound_hit_3.play(); create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 6, 2.0);} //удар током
+							if (player_bullet_array[i].type == 5) { sound_hit_2.setVolume(game_options->sound_volume); sound_hit_2.play(); create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 6, 2.0);} //обычный звук / холод
+
 							if (monster_array[j].health <= 0)
 							{
 								monster_array[j].isAlive = 0; //фиксируем смерть
 								monster_count--;
 								monsters_procecced--;
 								//создаем спецэффект на месте монстра
-								create_VFX(monster_array[j].X, monster_array[j].Y, 0, 1); // тип 0 - взрыв монстра
+								if (player_bullet_array[i].type == 0 || player_bullet_array[i].type == 1)
+																	create_VFX(monster_array[j].X, monster_array[j].Y, 0, 1.0);
 								//sound_death_1.play();
 								Rover.collected_money += monster_array[j].power;//гонорар
+								if (monster_array[j].isJugger)
+								{
+									//выбрасываем ресурсы, если монстр мощный
+									drop_flying_loot((planet_level + 1) * 2, (planet_level + 1) * 1, (int)floor((planet_level + 1) * 0.5), monster_array[j].X, monster_array[j].Y);
+									//издаем жуткий звук
+									sound_death_1.setVolume(game_options->sound_volume);
+									sound_death_1.play();
+								}
 							}
 							player_bullet_array[i].isAlive = 0;//пуля исчезает после попадания
 							player_bullet_count--;
@@ -1174,14 +1365,42 @@ void Mission::draw_bullets()
 					//фиксируем попадание
 					player_bullet_array[i].isAlive = 0;//пуля исчезает после попадания
 					player_bullet_count--;
-					if (obj_array[obj-1].type == 0 || obj_array[obj-1].type == 1) //попадание в базу или корабль
+					if (obj_array[obj - 1].type == 0 || obj_array[obj - 1].type == 1) //попадание в базу или корабль
 					{
-						create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 2, 1); // тип 2 - попадание пули
-						sound_hit_1.play();
+
+						if (player_bullet_array[i].type == 0 || player_bullet_array[i].type == 1)
+						{
+							//попадание снаряда
+							sound_hit_1.setVolume(game_options->sound_volume);
+							sound_hit_1.play();
+							create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 2, 1); // тип 2 - попадание пули
+						}
+						if (player_bullet_array[i].type == 2) make_explosion(player_bullet_array[i].X, player_bullet_array[i].Y, player_bullet_array[i].power, false, true);
+						if (player_bullet_array[i].type == 3)
+						{
+							sound_hit_4.setVolume(game_options->sound_volume);
+							sound_hit_4.play();  //взрыв плазмы
+							create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 5, 2); // тип 4 - взрыв плазмы
+						}
+						if (player_bullet_array[i].type == 4) 
+						{
+							sound_hit_3.setVolume(game_options->sound_volume); 
+							sound_hit_3.play();
+							create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 6, 2); // тип 6 - удар током
+						} 
+						if (player_bullet_array[i].type == 5)
+						{
+							sound_hit_1.setVolume(game_options->sound_volume);
+							sound_hit_1.play();
+							create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 6, 2); // тип 6 - удар током
+						}
+
+
 					}
 					if (obj_array[obj-1].type == 2) //попадание в гнездо
 					{
 						create_VFX(player_bullet_array[i].X, player_bullet_array[i].Y, 0, 2); // тип 0 - взрыв монстра
+						sound_hit_2.setVolume(game_options->sound_volume);
 						sound_hit_2.play();
 						obj_array[obj-1].Health -= player_bullet_array[i].power;
 						//printf("%0.0f\n", obj_array[obj - 1].Health);
@@ -1189,6 +1408,10 @@ void Mission::draw_bullets()
 						{
 							//убиваем гнездо
 							obj_array[obj-1].isValid = 0;
+							sound_death_1.setVolume(game_options->sound_volume);
+							sound_death_1.play();
+							//выбрасываем ресурсы
+							drop_flying_loot((planet_level + 1) * 2, (planet_level + 1) * 1, (int)floor((planet_level + 1) * 0.5), obj_array[obj - 1].X, obj_array[obj - 1].Y);
 						}
 					}
 
@@ -1198,7 +1421,8 @@ void Mission::draw_bullets()
 			if (player_bullet_array[i].isAlive == 1) //повторная проверка т.к. пуля могла попасть еще куда-нибудь
 			{
 				//рисуем спрайт пули
-				player_bullet_Sprite.setTextureRect(sf::IntRect(0, 0, 100, 100));
+				player_bullet_Sprite.setTextureRect(sf::IntRect(0, player_bullet_array[i].type * 100.0, 100, 100));
+				//printf("%i\n", Rover.weapon.get_ammo_type());
 				player_bullet_Sprite.setOrigin(50, 50);
 				player_bullet_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + player_bullet_array[i].X / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - player_bullet_array[i].Y / GAME_RENDER_SCALE);
 				player_bullet_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
@@ -1220,7 +1444,7 @@ void Mission::generate_monsters()
 	int GENERATED_MONSTER = 0;
 	int min_gen_dist, ring_width;
 	min_gen_dist = render_res_X * GAME_RENDER_SCALE;
-	ring_width = 2000 * GAME_RENDER_SCALE; //ширина области генерации
+	ring_width = 1000 * GAME_RENDER_SCALE; //ширина области генерации
 	//printf("%i  %i", min_gen_dist, ring_width);
 	double angle = 0.0, dist = 0.0;
 	//цикл генерации
@@ -1232,59 +1456,11 @@ void Mission::generate_monsters()
 			dist = min_gen_dist + (rand() / (double)RAND_MAX) * ring_width; //расстояние до монстра
 			double NEW_X = cos(angle) * dist + (Rover.player_coord_X - Rover.player_offset_X);
 			double NEW_Y = sin(angle) * dist + (Rover.player_coord_Y - Rover.player_offset_Y);
-
-			//добавляем данные в массив монстров
-			monster_array[i].isAlive = 1;
-			monster_array[i].isJugger = ((rand() * 1.0 / (RAND_MAX + 1.0)) > 0.97) ? 1 : 0; //джагернаут с вероятностью 10%
-			monster_array[i].level = floor(11.0 * rand() / (RAND_MAX + 1.0));
-			monster_array[i].sprite_N = floor(33.0 * rand() / (RAND_MAX + 1.0));
-			if (monster_array[i].sprite_N == 32) { monster_array[i].scale = 1.5; }
-			else monster_array[i].scale = 1;
-			if (monster_array[i].isJugger == 1) monster_array[i].scale *= 2;
-			monster_array[i].power = monster_array[i].level * (monster_array[i].isJugger + 1);
-			monster_array[i].moving_speed = 100 + rand() * 100.0 / (double)RAND_MAX;
-			monster_array[i].anim_time_MAX = monster_array[i].moving_speed * 4.0;
-			monster_array[i].direction = atan2(Rover.player_coord_Y - NEW_Y, Rover.player_coord_X - NEW_X);
-			int weapon;
-			double weapon_choice = rand() * 1.0 / (double)RAND_MAX;//выбор оружия
-			if (weapon_choice < 0.6) weapon = 0;
-			if (weapon_choice >= 0.6 && weapon_choice < 0.9) weapon = 1;
-			if (weapon_choice >= 0.9) weapon = 2;
-
-			//printf("%i\n", weapon);
-			if (weapon == 0)
-			{
-				//рукопашка
-				monster_array[i].attack_type = 0; // 0 - рукопашка, 1 - дальняя, 2 - по площади
-				monster_array[i].attack_time = 1000.0;
-				monster_array[i].attack_cooldown = 0.0;
-				monster_array[i].attack_distance = 120.0;
-			}
-			if (weapon == 1)
-			{
-				//атака на дистанции
-				monster_array[i].attack_type = 1; // 0 - рукопашка, 1 - дальняя, 2 - по площади
-				monster_array[i].attack_time = 1500.0;
-				monster_array[i].attack_cooldown = 0.0;
-				monster_array[i].attack_distance = 800.0;
-			}
-
-			if (weapon == 2)
-			{
-				//атака на дистанции
-				monster_array[i].attack_type = 2; // 0 - рукопашка, 1 - дальняя, 2 - по площади
-				monster_array[i].attack_time = 2000.0;
-				monster_array[i].attack_cooldown = 0.0;
-				monster_array[i].attack_distance = 1200.0;
-			}
-
-			monster_array[i].health = (3 + (int)floor(rand() * 3.0 / (RAND_MAX + 1.0))) * (monster_array[i].isJugger * 10 + 1);
-			monster_array[i].X = NEW_X;
-			monster_array[i].Y = NEW_Y;
+			spawn_monster(i, NEW_X, NEW_Y);
 
 			//printf("monster added #%5i = %5i   %5i   (%0f, %0f)   %1.2f\n", i, monster_array[i].sprite_N, monster_array[i].power, NEW_X, NEW_Y, monster_array[i].direction);
 			//printf("X=%5.0f Y=%5.0f ATAN2(%5.0f,%5.0f) = %1.3f", NEW_X, NEW_Y, Rover.player_coord_X - NEW_X, Rover.player_coord_Y - NEW_Y, monster_array[i].direction);
-			monster_count++;
+			//monster_count++;  это будет в функции спавна
 			GENERATED_MONSTER++;
 		}
 		else //если монстр жив, проверяем минимальное расстояние до игрока по X Y
@@ -1324,7 +1500,7 @@ void Mission::draw_monsters()
 			}
 
 			//рассчитываем движение
-			if ((dist_to_player < monster_array[i].attack_distance * 0.8f || dist_to_player > monster_array[i].attack_distance * 0.9f) && (dist_to_player < render_res_X * GAME_RENDER_SCALE)) //если монстр далеко - движения нет
+			if ((dist_to_player < monster_array[i].attack_distance * 0.8f || dist_to_player > monster_array[i].attack_distance * 0.9f) && (dist_to_player < monster_array[i].chase_distance * GAME_RENDER_SCALE + 300)) //если монстр далеко - движения нет
 			{
 				//Проверка на коллизии
 				int pendulum = 1; // (int)((rand() % 2 - 0.5f) * 2); //маятник
@@ -1430,8 +1606,9 @@ void Mission::draw_monsters()
 
 void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 {
-	// 0 - взрыв монстра, 1 - укус, 2 - взрыв снаряда, 3 - взрыв гранаты 
+	// 0 - взрыв монстра, 1 - укус, 2 - маленький взрыв снаряда, 3 - большой взрыв ракеты, 4 взрыв плазмы
 	//поиск свободного слота	
+	printf("VFX  type=%i  scale = %i \n", VFX_type, scale);
 	int i;
 	for (i = 0; i < 100 && VFX_array[i].isAlive > 0; ++i);
 	if (VFX_array[i].isAlive > 0) return; //если все слоты заняты - возврат
@@ -1444,7 +1621,7 @@ void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 		VFX_array[i].last_frame = 16;
 		VFX_array[i].keep_alive = 0; // 0 или 1 - убрать
 		VFX_array[i].total_time = 500; //в микросекундах
-		VFX_array[i].remaining_time = 500;
+		VFX_array[i].remaining_time = 500; // = total_time
 		VFX_array[i].remains_num = 1;//после анимации оставить останки
 		VFX_array[i].scale = scale;
 		VFX_array[i].X = VFX_X;
@@ -1460,7 +1637,7 @@ void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 		VFX_array[i].last_frame = 5;
 		VFX_array[i].keep_alive = 0; // 0 или 1 - убрать
 		VFX_array[i].total_time = 500; //в микросекундах
-		VFX_array[i].remaining_time = 500;
+		VFX_array[i].remaining_time = 500; // = total_time
 		VFX_array[i].remains_num = 0;//после анимации оставить останки
 		VFX_array[i].scale = scale;
 		VFX_array[i].X = VFX_X;
@@ -1468,7 +1645,7 @@ void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 		//printf("create VFX = 1\n");
 	}
 
-	if (VFX_type == 2) //взрыв снаряда
+	if (VFX_type == 2) //маленький взрыв снаряда
 	{
 		//добавляем строку в массив
 		VFX_array[i].isAlive = 1; // 0 - свободный слот, 1 - анимация
@@ -1476,7 +1653,7 @@ void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 		VFX_array[i].last_frame = 16;
 		VFX_array[i].keep_alive = 0; // 0 или 1 - убрать
 		VFX_array[i].total_time = 500; //в микросекундах
-		VFX_array[i].remaining_time = 500;
+		VFX_array[i].remaining_time = 500; // = total_time
 		VFX_array[i].remains_num = 0;//после анимации оставить останки
 		VFX_array[i].scale = scale;
 		VFX_array[i].X = VFX_X;
@@ -1484,7 +1661,7 @@ void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 		//printf("create VFX = 2\n");
 	}
 
-	if (VFX_type == 3) //взрыв гранаты
+	if (VFX_type == 3) //большой взрыв ракеты/гранаты
 	{
 		//добавляем строку в массив
 		VFX_array[i].isAlive = 1; // 0 - свободный слот, 1 - анимация
@@ -1500,6 +1677,37 @@ void Mission::create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale)
 		//printf("create VFX = 2\n");
 	}
 
+	if (VFX_type == 5) // взрыв плазмы
+	{
+		//добавляем строку в массив
+		VFX_array[i].isAlive = 1; // 0 - свободный слот, 1 - анимация
+		VFX_array[i].number = 5;//номер в атласе. размер у всех 100*100
+		VFX_array[i].last_frame = 25;
+		VFX_array[i].keep_alive = 0; // 0 или 1 - убрать
+		VFX_array[i].total_time = 600; //в микросекундах
+		VFX_array[i].remaining_time = 600; // = total_time
+		VFX_array[i].remains_num = 0;//после анимации оставить останки
+		VFX_array[i].scale = scale;
+		VFX_array[i].X = VFX_X;
+		VFX_array[i].Y = VFX_Y;
+		//printf("create VFX = 2\n");
+	}
+	
+	if (VFX_type == 6) // взрыв эл-ва/холода
+	{
+		//добавляем строку в массив
+		VFX_array[i].isAlive = 1; // 0 - свободный слот, 1 - анимация
+		VFX_array[i].number = 6;//номер в атласе. размер у всех 100*100
+		VFX_array[i].last_frame = 25;
+		VFX_array[i].keep_alive = 0; // 0 или 1 - убрать
+		VFX_array[i].total_time = 600; //в микросекундах
+		VFX_array[i].remaining_time = 600; // = total_time
+		VFX_array[i].remains_num = 0;//после анимации оставить останки
+		VFX_array[i].scale = scale;
+		VFX_array[i].X = VFX_X;
+		VFX_array[i].Y = VFX_Y;
+		//printf("create VFX = 2\n");
+	}
 
 
 }
@@ -1538,28 +1746,44 @@ void Mission::draw_VFX_remains()
 		if (VFX_remains_array[i].isAlive == 1)
 		{
 			//проверяем координаты
+			//нумерация спрайтов начинается с 1
 			double sprite_X = render_res_X / 2.0 + Rover.player_offset_X - ((Rover.player_coord_X - VFX_remains_array[i].X) / GAME_RENDER_SCALE);
 			double sprite_Y = render_res_Y / 2.0 - Rover.player_offset_Y + ((Rover.player_coord_Y - VFX_remains_array[i].Y) / GAME_RENDER_SCALE);
 			if (sprite_X > 0 && sprite_X < render_res_X && sprite_Y > 0 && sprite_Y < render_res_Y)
 			{
 				//рисуем спрайт
-				VFX_remains_Sprite.setTextureRect(sf::IntRect((VFX_remains_array[i].number - 1) * 100, 0, 100, 100));
-				VFX_remains_Sprite.setOrigin(50, 50);
-				VFX_remains_Sprite.setPosition(sprite_X, sprite_Y);
-				VFX_remains_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
-				VFX_remains_Sprite.setColor(sf::Color(255, 255, 255, 128));
-				game_window->draw(VFX_remains_Sprite);
+				if (VFX_remains_array[i].number != 4)
+				{
+					VFX_remains_Sprite.setTextureRect(sf::IntRect((VFX_remains_array[i].number - 1) * 100, 0, 100, 100));
+					VFX_remains_Sprite.setOrigin(50, 50);
+					VFX_remains_Sprite.setPosition(sprite_X, sprite_Y);
+					VFX_remains_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+					VFX_remains_Sprite.setColor(sf::Color(255, 255, 255, 128));
+					VFX_remains_Sprite.setRotation(VFX_remains_array[i].rotation);
+					game_window->draw(VFX_remains_Sprite);
+				}
+				else
+				{
+					tires_Sprite.setOrigin(100, 100);
+					tires_Sprite.setPosition(sprite_X, sprite_Y);
+					tires_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+					tires_Sprite.setColor(sf::Color(255, 255, 255, 40));
+					tires_Sprite.setRotation(VFX_remains_array[i].rotation);
+					game_window->draw(tires_Sprite);
+				}
+
 			}
 		}
 	}
 }
 
-void Mission::create_VFX_remains(double VFX_X, double VFX_Y, int VFX_type)
+void Mission::create_VFX_remains(double VFX_X, double VFX_Y, int VFX_type, double angle)
 {
 	VFX_remains_array[VFX_remains_pointer].isAlive = 1;
 	VFX_remains_array[VFX_remains_pointer].number = VFX_type;
 	VFX_remains_array[VFX_remains_pointer].X = VFX_X;
 	VFX_remains_array[VFX_remains_pointer].Y = VFX_Y;
+	VFX_remains_array[VFX_remains_pointer].rotation = angle;
 	VFX_remains_pointer++;
 	if (VFX_remains_pointer == 1000) VFX_remains_pointer = 0;
 }
@@ -1746,15 +1970,16 @@ void Mission::draw_stationary_obj()
 	{
 		if (obj_array[i].isValid == 1)
 		{
-			if (obj_array[i].type == 0)
+			if (obj_array[i].type == 0)  //база
 			{
 				base_Sprite.setOrigin(obj_array[i].size_X / 2.0, obj_array[i].size_Y / 2.0);
 				base_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + obj_array[i].X / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - obj_array[i].Y / GAME_RENDER_SCALE);
+				//base_Sprite.setColor(sf::Color(255, 255, 255, 100));
 				base_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
 				game_window->draw(base_Sprite);
 			}
 
-			if (obj_array[i].type == 1)
+			if (obj_array[i].type == 1)  //корабль
 			{
 				ship_Sprite.setOrigin(obj_array[i].size_X / 2.0, obj_array[i].size_Y / 2.0);
 				ship_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + obj_array[i].X / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - obj_array[i].Y / GAME_RENDER_SCALE);
@@ -1768,11 +1993,42 @@ void Mission::draw_stationary_obj()
 				nest_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + obj_array[i].X / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - obj_array[i].Y / GAME_RENDER_SCALE);
 				nest_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
 				game_window->draw(nest_Sprite);
+				
+				//генерация монстров при приближении игрока
+				obj_array[i].spec_data -= elapsed_ms;
+				if (obj_array[i].spec_data < 0) obj_array[i].spec_data = 0;
+
+				//определяем, попадает ли гнездо в зону видимости + 200 и "остыл" ли таймер
+				if (obj_array[i].spec_data == 0)
+				{
+					//границы экрана на "местности"
+					double left = - (render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE) * GAME_RENDER_SCALE;
+					double right = left + render_res_X * GAME_RENDER_SCALE;
+					double top = (render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y) * GAME_RENDER_SCALE;
+					double bottom = top - render_res_Y * GAME_RENDER_SCALE;
+					
+					if (obj_array[i].X > (left - 200) && obj_array[i].X < (right + 200))
+					{
+						if (obj_array[i].Y > (bottom - 200) && obj_array[i].Y < (top + 200))
+						{
+							//выпускаем монстра и запускаем таймаут
+							for (int j = 0; j < 1000; ++j)  //ищем место в массиве монстров
+							{
+								if (monster_array[j].isAlive == 0)
+								{
+									//создаем случайную точку
+									double direction = atan2(Rover.player_coord_Y - obj_array[i].Y, Rover.player_coord_X - obj_array[i].X);
+									spawn_monster(j, obj_array[i].X + cos(direction) * 300, obj_array[i].Y + sin(direction) * 300);
+									obj_array[i].spec_data = 2000; //таймер
+									printf("nest spawn!  (obj# %i)\n", i);
+									break;
+								}
+							}
+						}
+					}
+				}
 			}
-
-
 		}
-
 	}
 }
 
@@ -1870,7 +2126,7 @@ int Mission::evacuate()
 	double int_scale_y = render_res_Y / 1080.0;
 	sf::Sprite screenshot_Sprite;
 
-	screenshot_Sprite.setTexture(screnshot_Texture);
+	screenshot_Sprite.setTexture(screenshot_Texture);
 	screenshot_Sprite.setColor(sf::Color(255, 255, 255, 50));
 	game_window->clear();
 	game_window->draw(screenshot_Sprite);
@@ -1924,7 +2180,7 @@ int Mission::in_base()
 	double int_scale_y = render_res_Y / 1080.0;
 	sf::Sprite screenshot_Sprite;
 
-	screenshot_Sprite.setTexture(screnshot_Texture);
+	screenshot_Sprite.setTexture(screenshot_Texture);
 	screenshot_Sprite.setColor(sf::Color(255, 255, 255, 50));
 	game_window->clear();
 	game_window->draw(screenshot_Sprite);
@@ -1967,7 +2223,7 @@ int Mission::player_death()
 	double int_scale_y = render_res_Y / 1080.0;
 	sf::Sprite screenshot_Sprite;
 
-	screenshot_Sprite.setTexture(screnshot_Texture);
+	screenshot_Sprite.setTexture(screenshot_Texture);
 	screenshot_Sprite.setColor(sf::Color(255, 255, 255, 50));
 	game_window->clear();
 	game_window->draw(screenshot_Sprite);
@@ -2020,19 +2276,23 @@ void Mission::reset_Rover()
 	//обнуление параметров персонажа
 	Rover.Health = Rover.Health_MAX;
 //  Rover.Health_MAX = 100.0;
-	Rover.Energy = Rover.Energy_MAX;
+	Rover.Energy = 50; // Rover.Energy_MAX;
 //	Rover.Energy_MAX = 100.0;
 	Rover.Speed = 0.0;
 //	Rover.Speed_MAX = 400.0;
 	Rover.Speed_direction = 0.0;
 	Rover.gun_damage = 1.0;
 //	Rover.fire_rate = 4.0;
+// 	Rover.fire_rate_boost = pow(1.0185, rover_upgrades[4]); //не меняется
 //	Rover.slots = 0;
+	for (int i = 0; i < 3; ++i) Rover.slots[i] = -1;//обнуляем все слоты (-1)
+	printf("slots empty\n");
 	Rover.player_coord_X = 0.0;
 	Rover.player_coord_Y = 400.0;
 	Rover.player_offset_X = 0.0;
 	Rover.player_offset_Y = 0.0;
 	Rover.body_direction = 3;
+	Rover.body_direction_rad = 0;
 	Rover.weapon_direction = 3;
 	Rover.weapon_direction_rad = 0;
 	Rover.animation_time = 0;		//тайминги анимации в микросекундах
@@ -2043,6 +2303,16 @@ void Mission::reset_Rover()
 	Rover.collected_metal = 0;
 	Rover.collected_crystal = 0;
 	Rover.collected_uran = 0;
+	Rover.weapon.sprite_N = 0;
+	Rover.weapon.type = 0; //Type
+	Rover.weapon.color = 0; //Colour
+	Rover.weapon.fire_rate = 2.0; //fire_rate
+	Rover.weapon.power = 1.0; //power
+	Rover.weapon.damageArea = 0.0; //area_damage
+	Rover.weapon.hasSpecialEffect = false; //spec_effect
+	Rover.weapon.level = 0;
+	Rover.tires_XY[0] = Rover.player_coord_X; Rover.tires_XY[1] = Rover.player_coord_Y;
+
 }
 
 void Mission::reset_world()
@@ -2060,6 +2330,21 @@ void Mission::reset_world()
 	}
 	loot_count = 0;
 
+	//разбрасываемый лут
+	for (int i = 0; i < 100; ++i)
+	{
+		flying_loot_array[i].isValid = 0;
+		flying_loot_array[i].type = 0;
+		flying_loot_array[i].power = 0;
+		flying_loot_array[i].X = 0.0;
+		flying_loot_array[i].Y = 0.0;
+		flying_loot_array[i].dX = 0.0;
+		flying_loot_array[i].dY = 0.0;
+		flying_loot_array[i].dV = 0.0;
+		flying_loot_array[i].V_Velocity = 0.0;
+		flying_loot_array[i].ttl = 0.0;
+	}
+
 	//обнуляем стационарные объекты
 	for (int i = 0; i < 100; ++i)
 	{
@@ -2069,6 +2354,7 @@ void Mission::reset_world()
 		obj_array[i].size_Y = 0.0;
 		obj_array[i].X = 0.0;
 		obj_array[i].Y = 0.0;
+		obj_array[i].spec_data = 0;
 	}
 
 	make_stationary_obj();//создаем ключевые объекты
@@ -2083,7 +2369,7 @@ void Mission::reset_world()
 		equipment_array[i].Y = 0.0;
 	}
 	equipment_count = 0;
-	equipment_to_take = -1;
+	
 
 	//обнуляем монстров
 	for (int i = 0; i < 1000; ++i)
@@ -2105,6 +2391,7 @@ void Mission::reset_world()
 		monster_array[i].health = 0.0;
 		monster_array[i].X = 0.0;
 		monster_array[i].Y = 0.0;
+		monster_array[i].chase_distance = 0.0;
 	}
 	monster_count = 0;
 
@@ -2162,6 +2449,7 @@ void Mission::reset_world()
 		VFX_remains_array[i].number = 0;//номер в атласе. размер у всех 100*100
 		VFX_remains_array[i].X = 0.0;
 		VFX_remains_array[i].Y = 0.0;
+		VFX_remains_array[i].rotation = 0.0;
 	}
 	VFX_remains_pointer = 0;
 
@@ -2190,8 +2478,9 @@ void Mission::set_options_object(Options* game_options_from_main, unsigned int p
 	Rover.Generate_speed = 1.0 + 0.5 * rover_upgrades[2];
 	Rover.Speed_MAX = 300.0 * pow(1.0185f, rover_upgrades[3]);
 	//Rover.gun_damage = 1.0;
-	Rover.fire_rate = 4.0 * pow(1.0185, rover_upgrades[4]);
-	Rover.slots = rover_upgrades[5];
+	Rover.fire_rate_boost = pow(1.0185, rover_upgrades[4]);
+	Rover.active_slots = rover_upgrades[5];
+	for (int i = 0; i < 3; ++i) Rover.slots[i] = -1;//обнуляем все слоты (-1)
 	//Rover.player_coord_X = 0.0;
 	//Rover.player_coord_Y = 400.0;
 	//Rover.player_offset_X = 0.0;
@@ -2207,10 +2496,20 @@ void Mission::set_options_object(Options* game_options_from_main, unsigned int p
 	//Rover.collected_metal = 0;
 	//Rover.collected_crystal = 0;
 	//Rover.collected_uran = 0;
-	printf("params = %i %i %0.0f %0.0f %0.0f %0.0f %0.0f %i \n", planet_type, planet_level, Rover.Health_MAX,Rover.Energy_MAX,Rover.Generate_speed,Rover.Speed_MAX,Rover.fire_rate,Rover.slots);
+	//printf("params = %i %i %0.0f %0.0f %0.0f %0.0f %0.0f %i \n", planet_type, planet_level, Rover.Health_MAX,Rover.Energy_MAX,Rover.Generate_speed,Rover.Speed_MAX,Rover.fire_rate,Rover.slots);
+	
+	//сбрасываем настройки оружия
+	Rover.weapon.sprite_N = 0;
+	Rover.weapon.type = 0; //printf("new type %i\n", weapon_data[0]);
+	Rover.weapon.color = 0; //printf("new color %i\n", weapon_data[1]);
+	Rover.weapon.power = 1.0;
+	Rover.weapon.fire_rate = 2.0;
+	Rover.weapon.damageArea = 0.0;
+	Rover.weapon.hasSpecialEffect = false; //printf("new area_dam %i\n", Rover.weapon_data[5]);
+	Rover.weapon.level = 0;  //уровень обнуляется
 }
 
-sf::Texture* Mission::getScreenshot() { return(&screnshot_Texture); }
+sf::Texture* Mission::getScreenshot() { return(&screenshot_Texture); }
 
 int Mission::get_player_health_prc() { return (floor(100.0 * Rover.Health / Rover.Health_MAX)); }
 
@@ -2239,4 +2538,221 @@ void Mission::transfer_res_to_orbit(unsigned int *res_arr)
 	base_metal = 0;
 	base_crystal = 0;
 	base_uran = 0;
+}
+void Mission::get_resources(int *res_arr)
+{
+	//получаем ресурсы
+	// деньги, металл, кристалл, уран
+	Rover.collected_money += res_arr[0];
+	Rover.collected_metal += res_arr[1];
+	Rover.collected_crystal += res_arr[2];
+	Rover.collected_uran += res_arr[3];
+	printf("Got res (%i %i %i %i )\n", res_arr[0], res_arr[1], res_arr[2], res_arr[3]);
+}
+int Mission::get_weapon_to_take() {	return weapon_to_take; }
+int Mission::get_upgrade_to_take() { return upgrage_to_take; }
+WeaponData Mission::get_weapon_data() { return Rover.weapon; }
+
+
+
+void Mission::set_weapon(WeaponData weapon_data)
+{
+	Rover.weapon.sprite_N = weapon_data.sprite_N; //printf("new sprite %i\n", weapon_data[0]);
+	Rover.weapon.type = weapon_data.type; //printf("new type %i\n", weapon_data[0]);
+	Rover.weapon.color = weapon_data.color; //printf("new color %i\n", weapon_data[1]);
+	Rover.weapon.power = weapon_data.power;
+	Rover.weapon.fire_rate = weapon_data.fire_rate;
+	Rover.weapon.damageArea = weapon_data.damageArea; 
+	Rover.weapon.hasSpecialEffect = weapon_data.hasSpecialEffect; //printf("new area_dam %i\n", Rover.weapon_data[5]);
+	Rover.weapon.level = weapon_data.level;  //уровень обнуляется
+}
+
+int Mission::get_slots_number()
+{
+	return Rover.active_slots;
+}
+void Mission::get_slots_array(int* slots_arr)
+{
+	for (int i = 0;i<3;++i)
+	slots_arr[i] = Rover.slots[i];
+
+}
+
+void Mission::install_upgrade(int slot_num, int upgrade_type)
+{
+	Rover.slots[slot_num - 1] = upgrade_type;
+}
+
+void Mission::draw_flying_loot()
+{
+	for (int i = 0;i < 100;++i)
+	{
+		//проходим по массиву лута
+		if (flying_loot_array[i].isValid == 1)
+		{
+			//рисуем лут
+			int tile_offset = flying_loot_array[i].type * 100;
+			loot_Sprite.setTextureRect(sf::IntRect(tile_offset, 0, 100, 100));
+			double temp_y = flying_loot_array[i].Y + flying_loot_array[i].dV / GAME_RENDER_SCALE;
+			loot_Sprite.setPosition(flying_loot_array[i].X / GAME_RENDER_SCALE - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2), Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - temp_y / GAME_RENDER_SCALE);
+			loot_Sprite.setOrigin(50, 50);
+			loot_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+			if (flying_loot_array[i].type == 7)
+				{
+					//дорисовываем цвет оружия
+					int color = flying_loot_array[i].power >> 8;
+					sf::CircleShape shape(60.f);
+					shape.setOrigin(60.0, 60.0);
+					shape.setPosition(flying_loot_array[i].X / GAME_RENDER_SCALE - (Rover.player_coord_X / GAME_RENDER_SCALE - Rover.player_offset_X - render_res_X / 2), Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y + render_res_Y / 2 - flying_loot_array[i].Y / GAME_RENDER_SCALE);
+					shape.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
+					if (color == 0) shape.setFillColor(sf::Color(128, 128, 128, 70));
+					if (color == 1) shape.setFillColor(sf::Color(0, 255, 0, 70));
+					if (color == 2) shape.setFillColor(sf::Color(0, 255, 255, 70));
+					if (color == 3) shape.setFillColor(sf::Color(255, 0, 255, 70));
+					if (color == 4) shape.setFillColor(sf::Color(255, 255, 0, 70));
+					game_window->draw(shape);
+				}
+			game_window->draw(loot_Sprite);
+
+			//пересчитываем координаты
+			
+			flying_loot_array[i].X += flying_loot_array[i].dX * elapsed_ms / 1000;
+			flying_loot_array[i].Y += flying_loot_array[i].dY * elapsed_ms / 1000;
+			flying_loot_array[i].V_Velocity -= 3200.0 / 1000 * elapsed_ms;
+			flying_loot_array[i].dV += flying_loot_array[i].V_Velocity / 1000 * elapsed_ms;
+			flying_loot_array[i].ttl -= elapsed_ms;
+
+			if (flying_loot_array[i].ttl <= 0)
+			{
+				//переносим в основную таблицу
+				int t = 0;
+				
+				for (t = 0; t < 1000; ++t)
+				{
+					if (loot_array[t].isValid == 0) break;
+				}
+				
+				if (t < 1000)
+				{
+					//найдена пустая ячейка
+					loot_array[t].isValid = 1; 
+					loot_array[t].power = flying_loot_array[i].power;
+					loot_array[t].type = flying_loot_array[i].type;
+					loot_array[t].X = flying_loot_array[i].X;
+					loot_array[t].Y = flying_loot_array[i].Y + flying_loot_array[i].dV;
+					loot_count++;
+					//printf("loot move\n");
+					//break;
+				}
+				printf("loot stop V_vel = %0.0f  dV=%0.0f\n", flying_loot_array[i].V_Velocity, flying_loot_array[i].dV);
+				flying_loot_array[i].isValid = false;
+			}
+			/*
+				int isValid;
+				int type;// 0 - health, 1 - energy, 2 - health+energy, 3 - metal, 4 - crystal, 5 - uran, 6 - upgrade, 7 - weapon 
+				int power; //сколько восстановится 50 - 250, кол-во ресурсов, тип оружия  и т.п.
+				double X;
+				double Y;
+				double dX;
+				double dY;
+				double dV;
+				double V_Velocity;
+				double ttl;
+			*/
+		}
+	}
+}
+
+void Mission::drop_flying_loot(int metal_drop, int crystal_drop, int uran_drop, double X, double Y)
+{
+
+	for (int i = 0; i < metal_drop; ++i)
+	{
+		add_flying_loot(3, X, Y);
+	}
+	for (int i = 0; i < crystal_drop; ++i)
+	{
+		add_flying_loot(4, X, Y);
+	}
+	for (int i = 0; i < uran_drop; ++i)
+	{
+		add_flying_loot(5, X, Y);
+	}
+}
+	
+void Mission::add_flying_loot(int type, int X, int Y)
+	{
+		for (int i = 0; i < 100; ++i)
+		{
+			if (!flying_loot_array[i].isValid)
+			{
+				flying_loot_array[i].type = type;
+				flying_loot_array[i].isValid = true;
+				flying_loot_array[i].power = 1;
+				flying_loot_array[i].X = X;
+				flying_loot_array[i].Y = Y;
+				flying_loot_array[i].ttl = 500;
+				double angle = 2 * 3.1415926 * rand() / (RAND_MAX) - 3.1415926;
+				//double angle = 1.5;
+				flying_loot_array[i].dX = cos(angle) * 400.0;
+				flying_loot_array[i].dY = sin(angle) * 400.0;
+				flying_loot_array[i].dV = 0.0;
+				flying_loot_array[i].V_Velocity = 800.0;
+				break;
+			}
+		}
+}
+
+void Mission::spawn_monster(int i, double X, double Y)
+{
+	//добавляем данные в массив монстров
+	monster_array[i].isAlive = 1;
+	monster_array[i].isJugger = ((rand() * 1.0 / (RAND_MAX + 1.0)) > 0.97) ? 1 : 0; //джагернаут с вероятностью 10%
+	monster_array[i].level = floor(11.0 * rand() / (RAND_MAX + 1.0));
+	monster_array[i].sprite_N = floor(33.0 * rand() / (RAND_MAX + 1.0));
+	if (monster_array[i].sprite_N == 32) { monster_array[i].scale = 1.5; }
+	else monster_array[i].scale = 1;
+	if (monster_array[i].isJugger == 1) monster_array[i].scale *= 2;
+	monster_array[i].power = monster_array[i].level * (monster_array[i].isJugger + 1);
+	monster_array[i].moving_speed = 100 + rand() * 100.0 / (double)RAND_MAX;
+	monster_array[i].anim_time_MAX = monster_array[i].moving_speed * 4.0;
+	monster_array[i].direction = atan2(Rover.player_coord_Y - Y, Rover.player_coord_X - X);
+	monster_array[i].chase_distance = 1000.0;
+	int weapon;
+	double weapon_choice = rand() * 1.0 / (double)RAND_MAX;//выбор оружия
+	if (weapon_choice < 0.6) weapon = 0;
+	if (weapon_choice >= 0.6 && weapon_choice < 0.9) weapon = 1;
+	if (weapon_choice >= 0.9) weapon = 2;
+
+	//printf("%i\n", weapon);
+	if (weapon == 0)
+	{
+		//рукопашка
+		monster_array[i].attack_type = 0; // 0 - рукопашка, 1 - дальняя, 2 - по площади
+		monster_array[i].attack_time = 1000.0;
+		monster_array[i].attack_cooldown = 0.0;
+		monster_array[i].attack_distance = 120.0;
+	}
+	if (weapon == 1)
+	{
+		//атака на дистанции
+		monster_array[i].attack_type = 1; // 0 - рукопашка, 1 - дальняя, 2 - по площади
+		monster_array[i].attack_time = 1500.0;
+		monster_array[i].attack_cooldown = 0.0;
+		monster_array[i].attack_distance = 800.0;
+	}
+
+	if (weapon == 2)
+	{
+		//атака на дистанции
+		monster_array[i].attack_type = 2; // 0 - рукопашка, 1 - дальняя, 2 - по площади
+		monster_array[i].attack_time = 2000.0;
+		monster_array[i].attack_cooldown = 0.0;
+		monster_array[i].attack_distance = 1200.0;
+	}
+
+	monster_array[i].health = (planet_level + (int)floor(rand() * 3.0 / (RAND_MAX + 1.0))) * (monster_array[i].isJugger * (planet_level) + 1);
+	monster_array[i].X = X;
+	monster_array[i].Y = Y;
+	monster_count++;
 }

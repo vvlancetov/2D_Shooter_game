@@ -70,6 +70,18 @@ Game::Game(sf::RenderWindow* window, std::string path, Menu *menu_object)
      Planet_Jump_Texture.loadFromFile(game_path + "Assets\\Pictures\\Jump.png");
      Planet_Jump_Sprite.setTexture(Planet_Jump_Texture);
 
+     Dialog_weapon_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_weapon.png");
+     Dialog_weapon_Sprite.setTexture(Dialog_weapon_Texture);
+
+     Dialog_Upgrade_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_upgrade.png");
+     Dialog_Upgrade_Sprite.setTexture(Dialog_Upgrade_Texture);
+
+     Dialog_Upgrade_Text_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Upgrade_Text.png");
+     Dialog_Upgrade_Text_Sprite.setTexture(Dialog_Upgrade_Text_Texture);
+
+     weapon_tile_Texture.loadFromFile(game_path + "Assets\\Textures\\Weapon_tiles.png");
+     weapon_tile_Sprite.setTexture(weapon_tile_Texture);
+
      //загружаем шрифт
      if (!font.loadFromFile(game_path + "Assets\\Fonts\\arialnb.ttf")) printf("font load error\n");
      text.setFont(font); // font is a sf::Font
@@ -110,10 +122,10 @@ int Game::Run(sf::Time elapsed)
 
         //задаем координаты областей
         int Exit_area[4] = { int(19.0 * ky), int(75.0 * ky), int(21.0 * kx), int(195.0 * kx) };//top,bottom,left,right
-        int Start_mission_area[4] = { int(560.0 * ky), int(633.0 * ky), int(547.0 * kx), int(840.0 * kx) };//top,bottom,left,right
-        int Rover_area[4] = { int(572.0 * ky), int(631.0 * ky), int(1641.0 * kx), int(1869.0 * kx) };//top,bottom,left,right
+        int Start_mission_area[4] = { int(548.0 * ky), int(648.0 * ky), int(139.0 * kx), int(345.0 * kx) };//top,bottom,left,right
+        int Rover_area[4] = { int(562.0 * ky), int(632.0 * ky), int(1669.0 * kx), int(1832.0 * kx) };//top,bottom,left,right
         int Fly_area[4] = { int(222.0 * ky), int(319.0 * ky), int(956.0 * kx), int(1239.0 * kx) };//top,bottom,left,right
-        int Suit_area[4] = { int(1018.0 * ky), int(1068.0 * ky), int(173.0 * kx), int(357.0 * kx) };//top,bottom,left,right
+        int Suit_area[4] = { int(1008.0 * ky), int(1072.0 * ky), int(182.0 * kx), int(348.0 * kx) };//top,bottom,left,right
 
         //проверяем нахождение мыши над пунктами меню
         if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Exit_area[0])) draw_box(&Exit_area[0], sf::Color(0, 0, 0, 128));
@@ -183,7 +195,6 @@ int Game::Run(sf::Time elapsed)
                 Screenshot_Texture.update(*game_window);
             }
 
-
             if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Exit_area[0]))
             {
                 printf("Game -> Exit\n");  //выход в главное меню
@@ -227,6 +238,15 @@ int Game::Run(sf::Time elapsed)
                 game_state = GameStates::PAUSE_MISSION;
             }
 
+            if (result == 2)
+            {
+                //диалог подбора оружия
+                printf("Game -> Take weapon\n");
+                click_block = true;
+                game_state = GameStates::TAKE_WEAPON_MISSION;
+            }
+
+
             if (result == 3)
             {
                 //миссия закончена штатно
@@ -258,6 +278,14 @@ int Game::Run(sf::Time elapsed)
                 game_state = GameStates::SHIP_MISSION;
             }
 
+            if (result == 6)
+            {
+                //диалог подбора апгрейдов
+                printf("Game -> take UP\n");
+                click_block = true;
+                game_state = GameStates::TAKE_UPGRADE_MISSION;
+            }
+
 
 
         }
@@ -267,7 +295,7 @@ int Game::Run(sf::Time elapsed)
         //sf::sleep(sf::milliseconds(100));
         //printf("PAUSE\n");
         //int result = current_mission->pause(elapsed);
-        int result = game_menu->run(true);
+        int result = game_menu->run(true, false);
 
         if (result == 0)
         {
@@ -301,7 +329,7 @@ int Game::Run(sf::Time elapsed)
     
     if (game_state == GameStates::PAUSE_ORBIT)
     {
-        int result = game_menu->run(true);//true - меню паузы вызвано во время игру
+        int result = game_menu->run(true, true);//true - меню паузы вызвано во время игру
 
         if (result == 0)
         {
@@ -721,7 +749,7 @@ int Game::Run(sf::Time elapsed)
             text.setPosition(1286.0 * kx, 478.0 * ky); text.setString(buffer); game_window->draw(text);
 
             //Upgrade 5
-            sprintf_s(buffer, "lv.%i [%0.1f/s]", rover_upgrades[4], 4.0 * pow(1.0185,rover_upgrades[4]));
+            sprintf_s(buffer, "lv.%i [%i%c]", rover_upgrades[4], (int)(100.0 * pow(1.0185f, rover_upgrades[4])), '%');
             text.setPosition(1193.0 * kx, 531.0 * ky); text.setString(buffer); game_window->draw(text);
             
             if (rover_upgrades[4] < 50)
@@ -731,7 +759,7 @@ int Game::Run(sf::Time elapsed)
                 sprintf_s(buffer, "%i", prices[4][2]); text.setPosition(1246.0 * kx, 570.0 * ky); text.setString(buffer); game_window->draw(text);
                 sprintf_s(buffer, "%i", prices[4][1]); text.setPosition(1312.0 * kx, 570.0 * ky); text.setString(buffer); game_window->draw(text);
             }
-            if (rover_upgrades[4] < 50) sprintf_s(buffer, "[%0.1f/s]", 4.0 * pow(1.0185, rover_upgrades[4]));
+            if (rover_upgrades[4] < 50) sprintf_s(buffer, "[%i%c]", (int)(100.0 * pow(1.0185f, rover_upgrades[4] + 1)), '%');
             else sprintf_s(buffer, "[%s]", "MAX");
             text.setPosition(1286.0 * kx, 598.0 * ky); text.setString(buffer); game_window->draw(text);
 
@@ -919,10 +947,11 @@ int Game::Run(sf::Time elapsed)
             text.setFillColor(sf::Color::Cyan);
             text.setStyle(sf::Text::Bold);
             text.setOrigin(0, 0);
+            wchar_t buf[50];
 
             //Upgrade 1
-            sprintf_s(buffer, "lv.%i [%0.1f %c]", suit_upgrades[0], 100.0 * (1.0f - pow(0.98f, suit_upgrades[0])), '%');
-            text.setPosition(751.0 * kx, 411.0 * ky); text.setString(buffer); game_window->draw(text);
+            swprintf_s(buf, L"ур.%i [%0.1f %c]", suit_upgrades[0], 100.0 * (1.0f - pow(0.98f, suit_upgrades[0])), '%');
+            text.setPosition(751.0 * kx, 411.0 * ky); text.setString(buf); game_window->draw(text);
             if (suit_upgrades[0] < 50)
             {
                 sprintf_s(buffer, "%i", prices[0][0]); text.setPosition(680.0 * kx, 447.0 * ky); text.setString(buffer); game_window->draw(text);
@@ -1177,8 +1206,8 @@ int Game::Run(sf::Time elapsed)
                 sf::sleep(sf::seconds(1));
                 planet_number++;
                 
-                planet_level = 1 + floor(rand() * 10.0 / (RAND_MAX + 1));
-                if (planet_level > planet_number / 3.0) planet_level = (int)floor(planet_number / 3.0);
+                planet_level = 1 + floor(rand() * (planet_number / 2) / (RAND_MAX + 1));
+                if (planet_level > 9) planet_level = 9;
                 planet_type = 1 + floor(rand() * 5.0 / (RAND_MAX + 1));
                 
                 if (planet_type == 1) bg_Planet_Texture.loadFromFile(game_path + "Assets\\Pictures\\Planet_1.png");
@@ -1212,6 +1241,317 @@ int Game::Run(sf::Time elapsed)
         }
 
     }
+    
+    if (game_state == GameStates::TAKE_WEAPON_MISSION)
+    {
+
+        //sf::sleep(sf::milliseconds(100));
+
+        Screenshot_Sprite.setTexture(*current_mission->getScreenshot());
+        Screenshot_Sprite.setColor(sf::Color(255, 255, 255, 255));
+        game_window->clear();
+        game_window->draw(Screenshot_Sprite);
+
+        //рисуем интерфейс
+        Dialog_weapon_Sprite.setScale(kx, ky);
+        game_window->draw(Dialog_weapon_Sprite);
+
+        //задаем координаты областей кнопок
+        int Get_resources_area[4] = { int(833.0 * ky), int(926.0 * ky), int(256.0 * kx), int(651.0 * kx) };//top,bottom,left,right
+        int Change_weapon_area[4] = { int(833.0 * ky), int(926.0 * ky), int(762.0 * kx), int(1156.0 * kx) };//top,bottom,left,right
+        int Level_UP_area[4] = { int(833.0 * ky), int(926.0 * ky), int(1264.0 * kx), int(1659.0 * kx) };//top,bottom,left,right
+        
+        WeaponData new_weapon;
+        new_weapon.sprite_N = current_mission->get_weapon_to_take() & 255;
+        new_weapon.type = current_mission->get_weapon_to_take() & 255;
+        new_weapon.color = current_mission->get_weapon_to_take() >> 8;
+        new_weapon.fire_rate = calculate_fire_rate(new_weapon.type, new_weapon.color, 0); //рассчитывается в функции (double)
+        new_weapon.power = calculate_damage(new_weapon.type, new_weapon.color, 0); //рассчитывается в функции (double)
+        if (new_weapon.type == 2) new_weapon.damageArea = 100.0; else new_weapon.damageArea = 0.0;
+        if (new_weapon.type < 3) new_weapon.hasSpecialEffect = false; else new_weapon.hasSpecialEffect = true;
+        new_weapon.level = 0;
+
+        //рисуем спрайт
+        weapon_tile_Sprite.setTextureRect(sf::IntRect(0, new_weapon.sprite_N * 200, 200, 200));
+        weapon_tile_Sprite.setPosition((int)(1560.0 * kx),(int)((256.0 + 50.0) * ky));
+        weapon_tile_Sprite.setScale(kx, ky);
+        weapon_tile_Sprite.setOrigin(100, 100);
+        weapon_tile_Sprite.setRotation(-90.0);
+        game_window->draw(weapon_tile_Sprite);
+
+        //параметры текста
+
+        wchar_t buffer[50];
+        text.setCharacterSize((int)(30.0 * ky)); // in pixels, not points!
+        text.setFillColor(sf::Color(78,69,46,255));
+        text.setStyle(sf::Text::Bold);
+        text.setOrigin(0, (int)(30.0 * ky));
+        
+        //заполняем информацию о найденном оружии
+
+        get_weapon_name(new_weapon.type, buffer);
+        text.setPosition(1000.0 * kx, 505.0 * ky); text.setString(buffer); game_window->draw(text);
+        
+        text.setFillColor(get_color_by_weapon_quality(new_weapon.color));
+        get_weapon_quality_name(new_weapon.color, buffer);
+        text.setPosition(1000.0 * kx, 551.0 * ky); text.setString(buffer); game_window->draw(text);
+        text.setFillColor(sf::Color(78, 69, 46, 255));
+        
+        swprintf_s(buffer,L"%i", new_weapon.level);
+        text.setPosition(1000.0 * kx, 602.0 * ky); text.setString(buffer); game_window->draw(text);
+        swprintf_s(buffer, L"%0.2f", new_weapon.power);
+        text.setPosition(1000.0 * kx, 653.0 * ky); text.setString(buffer); game_window->draw(text);
+        swprintf_s(buffer, L"%0.2f", new_weapon.fire_rate);
+        text.setPosition(1000.0 * kx, 699.0 * ky); text.setString(buffer); game_window->draw(text);
+        if (new_weapon.damageArea > 0.0)swprintf_s(buffer, L"ДА"); else swprintf_s(buffer, L"НЕТ");
+        text.setPosition(1000.0 * kx, 748.0 * ky); text.setString(buffer); game_window->draw(text);
+        if (new_weapon.hasSpecialEffect)swprintf_s(buffer, L"ДА"); else swprintf_s(buffer, L"НЕТ");
+        text.setPosition(1000.0 * kx, 797.0 * ky); text.setString(buffer); game_window->draw(text);
+
+        //Получаем информацию о текущем оружии
+        WeaponData cur_weapon = current_mission->get_weapon_data();
+
+        //заполняем информацию о текущем оружии
+        get_weapon_name(cur_weapon.type, buffer);
+        text.setPosition(720.0 * kx, 505.0 * ky); text.setString(buffer); game_window->draw(text);
+        text.setFillColor(get_color_by_weapon_quality(cur_weapon.color));
+        get_weapon_quality_name(cur_weapon.color, buffer);
+        text.setPosition(720.0 * kx, 551.0 * ky); text.setString(buffer); game_window->draw(text);
+        text.setFillColor(sf::Color(78, 69, 46, 255));
+        swprintf_s(buffer, L"%i", cur_weapon.level);
+        text.setPosition(720.0 * kx, 602.0 * ky); text.setString(buffer); game_window->draw(text);
+        swprintf_s(buffer, L"%0.2f", cur_weapon.power);
+        text.setPosition(720.0 * kx, 653.0 * ky); text.setString(buffer); game_window->draw(text);
+        swprintf_s(buffer, L"%0.2f", cur_weapon.fire_rate);
+        text.setPosition(720.0 * kx, 699.0 * ky); text.setString(buffer); game_window->draw(text);
+        if (cur_weapon.damageArea > 0.0)swprintf_s(buffer, L"ДА"); else swprintf_s(buffer, L"НЕТ");
+        text.setPosition(720.0 * kx, 748.0 * ky); text.setString(buffer); game_window->draw(text);
+        if (cur_weapon.hasSpecialEffect)swprintf_s(buffer, L"ДА"); else swprintf_s(buffer, L"НЕТ");
+        text.setPosition(720.0 * kx, 797.0 * ky); text.setString(buffer); game_window->draw(text);
+
+        //заполняем информацию об апгрейде текущего оружия
+
+        get_weapon_name(cur_weapon.type, buffer);
+        text.setPosition(1275.0 * kx, 505.0 * ky); text.setString(buffer); game_window->draw(text);
+        text.setFillColor(get_color_by_weapon_quality(cur_weapon.color));
+        get_weapon_quality_name(cur_weapon.color, buffer);
+        text.setPosition(1275.0 * kx, 551.0 * ky); text.setString(buffer); game_window->draw(text);
+        text.setFillColor(sf::Color(78, 69, 46, 255));
+        swprintf_s(buffer, L"%i", cur_weapon.level + 1);
+        text.setPosition(1275.0 * kx, 602.0 * ky); text.setString(buffer); game_window->draw(text);
+        swprintf_s(buffer, L"%0.2f", calculate_damage(cur_weapon.type, cur_weapon.color, cur_weapon.level + 1));
+        text.setPosition(1275.0 * kx, 653.0 * ky); text.setString(buffer); game_window->draw(text);
+        swprintf_s(buffer, L"%0.2f", calculate_fire_rate(cur_weapon.type, cur_weapon.color, cur_weapon.level + 1));
+        text.setPosition(1275.0 * kx, 699.0 * ky); text.setString(buffer); game_window->draw(text);
+        if (cur_weapon.damageArea > 0.0)swprintf_s(buffer, L"ДА"); else swprintf_s(buffer, L"НЕТ");
+        text.setPosition(1275.0 * kx, 748.0 * ky); text.setString(buffer); game_window->draw(text);
+        if (cur_weapon.hasSpecialEffect)swprintf_s(buffer, L"ДА"); else swprintf_s(buffer, L"НЕТ");
+        text.setPosition(1275.0 * kx, 797.0 * ky); text.setString(buffer); game_window->draw(text);
+
+        //проверяем нахождение мыши над пунктами меню
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Change_weapon_area[0]))    draw_box(&Change_weapon_area[0], sf::Color(0, 0, 0, 128));
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Level_UP_area[0]))         draw_box(&Level_UP_area[0], sf::Color(0, 0, 0, 128));
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Get_resources_area[0]))    draw_box(&Get_resources_area[0], sf::Color(0, 0, 0, 128));
+
+        //рисуем курсор
+        mouse_pointer_Sprite.setPosition((float)CursorPosition.x, (float)CursorPosition.y);
+        game_window->draw(mouse_pointer_Sprite);
+
+        //финальная отрисовка окна
+        game_window->display();
+        
+        //проверяем нажатия клавишь
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
+        {
+            // проверяем нажатие на кнопки
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Change_weapon_area[0]))
+            {
+                //заменяем оружие
+                click_block = true;
+                current_mission->set_weapon(new_weapon);
+
+                game_state = GameStates::MISSION;
+
+            }
+
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Level_UP_area[0]))
+            {
+                click_block = true;
+                printf("level UP \n");
+                cur_weapon.level++;
+                cur_weapon.power = calculate_damage(cur_weapon.type, cur_weapon.color, cur_weapon.level);
+                cur_weapon.fire_rate = calculate_fire_rate(cur_weapon.type, cur_weapon.color, cur_weapon.level);
+                current_mission->set_weapon(cur_weapon);
+                game_state = GameStates::MISSION;
+            }
+
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Get_resources_area[0]))
+            {
+                click_block = true;
+                if (new_weapon.color == 0)
+                {
+                    int res[4]{ 0, 10, 0, 0 };
+                    current_mission->get_resources(&res[0]);
+                }
+                if (new_weapon.color == 1)
+                {
+                    int res[4]{ 0, 10, 5, 0 };
+                    current_mission->get_resources(&res[0]);
+                }
+                if (new_weapon.color == 2)
+                {
+                    int res[4]{ 0, 15, 10, 1 };
+                    current_mission->get_resources(&res[0]);
+                }
+                if (new_weapon.color == 3)
+                {
+                    int res[4]{ 0, 20, 12, 3 };
+                    current_mission->get_resources(&res[0]);
+                }
+                if (new_weapon.color == 4)
+                {
+                    int res[4]{ 0, 20, 15, 5 };
+                    current_mission->get_resources(&res[0]);
+                }
+                game_state = GameStates::MISSION;
+            }
+
+        }
+
+        //снимаем блокировку даблкликов
+        if (!(sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)))
+        {
+            click_block = false;
+        }
+    }
+
+    if (game_state == GameStates::TAKE_UPGRADE_MISSION)
+    {
+
+        //sf::sleep(sf::milliseconds(100));
+
+        Screenshot_Sprite.setTexture(*current_mission->getScreenshot());
+        Screenshot_Sprite.setColor(sf::Color(255, 255, 255, 255));
+        game_window->clear();
+        game_window->draw(Screenshot_Sprite);
+
+        //рисуем интерфейс
+        Dialog_Upgrade_Sprite.setScale(kx, ky);
+        game_window->draw(Dialog_Upgrade_Sprite);
+        
+        //задаем координаты областей кнопок
+        int Get_resources_area[4] = { int(861.0 * ky), int(933.0 * ky), int(249.0 * kx), int(548.0 * kx) };//top,bottom,left,right
+        int slot_1_area[4] = { int(861.0 * ky), int(933.0 * ky), int(616.0 * kx), int(915.0 * kx) };//top,bottom,left,right
+        int slot_2_area[4] = { int(861.0 * ky), int(933.0 * ky), int(997.0 * kx), int(1296.0 * kx) };//top,bottom,left,right
+        int slot_3_area[4] = { int(861.0 * ky), int(933.0 * ky), int(1369.0 * kx), int(1668.0 * kx) };//top,bottom,left,right
+
+        int new_upgrade = current_mission->get_upgrade_to_take();
+
+        //рисуем спрайт
+        Dialog_Upgrade_Text_Sprite.setTextureRect(sf::IntRect(0, new_upgrade * 200, 200, 200));
+        Dialog_Upgrade_Text_Sprite.setPosition((int)(1560.0 * kx), (int)((256.0) * ky));
+        Dialog_Upgrade_Text_Sprite.setScale(kx, ky);
+        Dialog_Upgrade_Text_Sprite.setOrigin(100, 100);
+        game_window->draw(Dialog_Upgrade_Text_Sprite);
+
+        int active_slots = current_mission->get_slots_number();
+        int slots[3];
+        current_mission->get_slots_array(&slots[0]);
+        //slots[0] = 1;
+        printf("slots = %i\n", active_slots);
+        printf("slots (%i, %i, %i)\n", slots[0], slots[1], slots[2]);
+         
+        //проверяем нахождение мыши над пунктами меню
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Get_resources_area[0]))                 draw_box(&Get_resources_area[0], sf::Color(0, 0, 0, 128));
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &slot_1_area[0]) && active_slots > 0)    draw_box(&slot_1_area[0], sf::Color(0, 0, 0, 128));
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &slot_2_area[0]) && active_slots > 1)    draw_box(&slot_2_area[0], sf::Color(0, 0, 0, 128));
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &slot_3_area[0]) && active_slots > 2)    draw_box(&slot_3_area[0], sf::Color(0, 0, 0, 128));
+
+        //рисуем иконки апгрейдов
+        //сначала нерабочие ячейки
+        for (int i = active_slots + 1; i < 4; ++i)
+        {
+            Dialog_Upgrade_Text_Sprite.setTextureRect(sf::IntRect(0, 5 * 200, 200, 200));
+            Dialog_Upgrade_Text_Sprite.setPosition((int)((291.0 + 379.0 * i) * kx), (int)(604.0 * ky));
+            Dialog_Upgrade_Text_Sprite.setScale(kx, ky);
+            Dialog_Upgrade_Text_Sprite.setOrigin(0, 0);
+            game_window->draw(Dialog_Upgrade_Text_Sprite);
+        }
+
+        //теперь занятые
+        for (int i = 0; i < active_slots; ++i)
+        {
+            if (slots[i] == -1)
+            {
+                Dialog_Upgrade_Text_Sprite.setTextureRect(sf::IntRect(0, 6 * 200, 200, 200));
+            }
+            else
+            {
+                Dialog_Upgrade_Text_Sprite.setTextureRect(sf::IntRect(0, slots[i] * 200, 200, 200));
+            }
+            
+            Dialog_Upgrade_Text_Sprite.setPosition((int)((291.0 + 379.0 * (i+1)) * kx), (int)(604.0 * ky));
+            Dialog_Upgrade_Text_Sprite.setScale(kx, ky);
+            Dialog_Upgrade_Text_Sprite.setOrigin(0, 0);
+            game_window->draw(Dialog_Upgrade_Text_Sprite);
+        }
+
+
+        //рисуем курсор
+        mouse_pointer_Sprite.setPosition((float)CursorPosition.x, (float)CursorPosition.y);
+        game_window->draw(mouse_pointer_Sprite);
+
+        //финальная отрисовка окна
+        game_window->display();
+
+        //проверяем нажатия клавишь
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
+        {
+            // проверяем нажатие на кнопки
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &slot_1_area[0]) && active_slots >= 1)
+            {
+                //вставка в слот 1
+                click_block = true;
+                //current_mission->set_weapon(new_weapon);
+                current_mission->install_upgrade(1, new_upgrade);
+                game_state = GameStates::MISSION;
+            }
+
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &slot_2_area[0]) && active_slots >= 2)
+            {
+                //вставка в слот 1
+                click_block = true;
+                current_mission->install_upgrade(2, new_upgrade);
+                //current_mission->set_weapon(new_weapon);
+                game_state = GameStates::MISSION;
+            }
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &slot_3_area[0]) && active_slots >= 3)
+            {
+                //вставка в слот 1
+                click_block = true;
+                current_mission->install_upgrade(3, new_upgrade);
+                //current_mission->set_weapon(new_weapon);
+                game_state = GameStates::MISSION;
+            }
+
+
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Get_resources_area[0]))
+            {
+                click_block = true;
+                int res[4]{ 0, 10, 10, 2 };
+                current_mission->get_resources(&res[0]);
+                game_state = GameStates::MISSION;
+            }
+
+        }
+
+        //снимаем блокировку даблкликов
+        if (!(sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)))
+        {
+            click_block = false;
+        }
+        
+    }
 
 
     return(0); //продолжаем
@@ -1225,8 +1565,8 @@ int Game::Reset()
     resource_crystal = 0;
     resource_uran = 0;
     planet_number = 0;
-    planet_type = 0;
-    planet_level = 0;
+    planet_type = 1;
+    planet_level = 1;
     for (int i = 0; i < 6; ++i)
     {
         rover_upgrades[i] = 0;
@@ -1447,7 +1787,7 @@ void Game::draw_orbit_interface(double kx, double ky)
     text.setCharacterSize(45); // in pixels, not points!
 
     //деньги
-    text.setFillColor(sf::Color::Red);
+    text.setFillColor(sf::Color(153,203,253,255));
     text.setStyle(sf::Text::Bold);
     char buffer[50];
     sprintf_s(buffer, "%i", resource_money);
@@ -1456,7 +1796,7 @@ void Game::draw_orbit_interface(double kx, double ky)
     text.setOrigin(text.getLocalBounds().width, 0);
     game_window->draw(text);
     //уран
-    text.setFillColor(sf::Color::Red);
+    text.setFillColor(sf::Color(153, 203, 253, 255));
     text.setStyle(sf::Text::Bold);
     sprintf_s(buffer, "%i", resource_uran);
     text.setPosition(1370.0 * kx, 18.0 * ky);
@@ -1464,7 +1804,7 @@ void Game::draw_orbit_interface(double kx, double ky)
     text.setOrigin(text.getLocalBounds().width, 0);
     game_window->draw(text);
     //кристаллы
-    text.setFillColor(sf::Color::Red);
+    text.setFillColor(sf::Color(153, 203, 253, 255));
     text.setStyle(sf::Text::Bold);
     sprintf_s(buffer, "%i", resource_crystal);
     text.setPosition(1622.0 * kx, 18.0 * ky);
@@ -1472,10 +1812,10 @@ void Game::draw_orbit_interface(double kx, double ky)
     text.setOrigin(text.getLocalBounds().width, 0);
     game_window->draw(text);
     //металл
-    text.setFillColor(sf::Color::Red);
+    text.setFillColor(sf::Color(153, 203, 253, 255));
     text.setStyle(sf::Text::Bold);
     sprintf_s(buffer, "%i", resource_metal);
-    text.setPosition(1874.0 * kx, 18.0 * ky);
+    text.setPosition(1854.0 * kx, 18.0 * ky);
     text.setString(buffer);
     text.setOrigin(text.getLocalBounds().width, 0);
     game_window->draw(text);
@@ -1507,4 +1847,75 @@ void Game::draw_orbit_interface(double kx, double ky)
     game_window->draw(text);
 
     text.setRotation(0);
+}
+
+double Game::calculate_damage(int weapon_type, int weapon_color, int weapon_level)
+{
+    double damage = 0.0;
+    //определяем базовый уровень
+    if (weapon_type == 0) damage = 1.0;
+    if (weapon_type == 1) damage = 0.5;
+    if (weapon_type == 2) damage = 2.0;
+    if (weapon_type == 3) damage = 1.0;
+    if (weapon_type == 4) damage = 1.0;
+    if (weapon_type == 5) damage = 1.0;
+
+    damage *= (1.0 + weapon_color * 0.08);
+    damage *= (1.0 + weapon_level * 0.02);
+    return damage;
+}
+
+double Game::calculate_fire_rate(int weapon_type, int weapon_color, int weapon_level)
+{
+    double fire_rate = 0.0;
+    //определяем базовый уровень
+    if (weapon_type == 0) fire_rate = 2.0;
+    if (weapon_type == 1) fire_rate = 4.0;
+    if (weapon_type == 2) fire_rate = 1.0;
+    if (weapon_type == 3) fire_rate = 2.0;
+    if (weapon_type == 4) fire_rate = 2.0;
+    if (weapon_type == 5) fire_rate = 2.0;
+
+    fire_rate *= (1.0 + weapon_color * 0.05);
+    fire_rate *= (1.0 + weapon_level * 0.01);
+    //printf("%0.0f\n", fire_rate);
+    //sf::sleep(sf::seconds(1));
+    return fire_rate;
+}
+
+void Game::get_weapon_name(int weapon_type, wchar_t *buffer)
+{
+    // размер буфера 50
+    wchar_t buf[50];
+    if (weapon_type == 0) swprintf_s(buf, L"Пушка");
+    if (weapon_type == 1) swprintf_s(buf, L"Пулемет");
+    if (weapon_type == 2) swprintf_s(buf, L"Ракетница");
+    if (weapon_type == 3) swprintf_s(buf, L"Плазмаган");
+    if (weapon_type == 4) swprintf_s(buf, L"Пушка Тесла");
+    if (weapon_type == 5) swprintf_s(buf, L"Замораживатель");
+
+    for (int i = 0; i < 50; ++i) buffer[i] = buf[i];
+}
+
+void Game::get_weapon_quality_name(int color, wchar_t *buffer)
+{
+    // размер буфера 50
+    wchar_t buf[50];
+    if (color == 0) swprintf_s(buf, L"Обычное[0]");
+    if (color == 1) swprintf_s(buf, L"Хорошее[1]");
+    if (color == 2) swprintf_s(buf, L"Отличное[2]");
+    if (color == 3) swprintf_s(buf, L"Супер-пупер[3]");
+    if (color == 4) swprintf_s(buf, L"Божественное[4]");
+
+    for (int i = 0; i < 50; ++i) buffer[i] = buf[i];
+}
+
+sf::Color Game::get_color_by_weapon_quality(int quality)
+{
+    if (quality == 0) return sf::Color(210,210,210,255);
+    if (quality == 1) return sf::Color(0, 255, 0, 255);
+    if (quality == 2) return sf::Color(0, 0, 255, 255);
+    if (quality == 3) return sf::Color(255, 0, 255, 255);
+    return sf::Color(255, 255, 0, 255);
+    
 }

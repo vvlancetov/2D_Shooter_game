@@ -35,7 +35,7 @@ private:
 	sf::Texture interface_Texture;
 	sf::Sprite interface_Sprite;
 	//текстура для скриншотов
-	sf::Texture screnshot_Texture;
+	sf::Texture screenshot_Texture;
 	//текстуры диалога смены оборудования
 	sf::Texture interface_equip_Texture;
 	sf::Sprite interface_equip_Sprite;
@@ -63,6 +63,10 @@ private:
 	//текстура гнезда
 	sf::Texture nest_Texture;
 	sf::Sprite nest_Sprite;
+	//текстура следов
+	sf::Texture tires_Texture;
+	sf::Sprite tires_Sprite;
+
 	//спрайты диалогов
 	sf::Texture death_dialog_Texture;
 	sf::Sprite death_dialog_Sprite;
@@ -119,14 +123,16 @@ private:
 		double Speed;
 		double Speed_MAX = 0;
 		double Speed_direction;
-		double fire_rate;		//выстрелы в секунду
+		double fire_rate_boost;		//выстрелы в секунду
 		double gun_damage;		//урон от выстрела
-		unsigned int slots = 0;  //слоты под артефакты
+		unsigned int active_slots = 0;  //активные слоты
+		int slots[3]{ -1 }; //массив слотов для артефактов
 		double player_coord_X;
 		double player_coord_Y;	//координаты в мире
 		double player_offset_X;
 		double player_offset_Y;	//смещение от центра экрана
 		int body_direction;		//направление движения и оружия
+		double body_direction_rad;
 		int weapon_direction;
 		double animation_time;		//тайминги анимации в секундах
 		double animation_time_MAX;
@@ -137,6 +143,8 @@ private:
 		int collected_metal;
 		int collected_crystal;
 		int collected_uran;
+		WeaponData weapon; 
+		double tires_XY[2];
 	};
 	player Rover;
 	
@@ -144,16 +152,33 @@ private:
 	struct loot
 	{
 		int isValid;
-		int type;// 0 - health, 1 - energy, 2 - health+energy
-		int power; //сколько восстановится 50 - 250
+		int type;// 0 - health, 1 - energy, 2 - health+energy, 3 - metal, 4 - crystal, 5 - uran, 6 - upgrade, 7 - weapon 
+		int power; //сколько восстановится 50 - 250, кол-во ресурсов, тип оружия  и т.п.
 		double X; 
 		double Y;
 	};
 	
 	loot* loot_array;
 	int loot_count;
-
-	//массив точек интереса: база, точки эвакуации
+	
+	//структуры для вылетевшего лута
+	struct flying_loot
+	{
+		int isValid;
+		int type;// 0 - health, 1 - energy, 2 - health+energy, 3 - metal, 4 - crystal, 5 - uran, 6 - upgrade, 7 - weapon 
+		int power; //сколько восстановится 50 - 250, кол-во ресурсов, тип оружия  и т.п.
+		double X;
+		double Y;
+		double dX;
+		double dY;
+		double dV;
+		double V_Velocity;
+		double ttl;
+	};
+	
+	flying_loot* flying_loot_array;
+	
+	//массив точек интереса: база, точки эвакуации, гнёзда
 	struct stationary_object
 	{
 		int isValid;
@@ -163,10 +188,11 @@ private:
 		double X;
 		double Y;
 		double Health;
+		int spec_data;
 	};
 	stationary_object* obj_array;
 
-	//массив для оборудования (оружие, апгрейды, броня)
+	//массив для оборудования (оружие, апгрейды, броня)    DEL
 	struct equipment
 	{
 		int isValid;
@@ -177,8 +203,9 @@ private:
 	};
 	equipment* equipment_array;
 	int equipment_count;
-	int equipment_to_take;//номер оборудования для подбора (переход в отдельную ветку)
-
+	int weapon_to_take;//номер оружия для подбора (переход в отдельную ветку)
+	int upgrage_to_take;//номер апгрейда для подбора (переход в отдельную ветку)
+	
 	//массив монстров
 	struct monster
 	{
@@ -199,6 +226,7 @@ private:
 		double health;
 		double X;
 		double Y;
+		double chase_distance;
 	};
 	monster* monster_array;
 	int monster_count;
@@ -259,6 +287,7 @@ private:
 		unsigned char number;//номер в атласе. размер у всех 100*100
 		double X;
 		double Y;
+		double rotation;
 	};
 	VFX_remains* VFX_remains_array;
 	int VFX_remains_pointer;
@@ -272,6 +301,14 @@ private:
 	//звуки
 	sf::SoundBuffer buffer_gun_1; //пушка игрока
 	sf::Sound sound_gun_1;
+	sf::SoundBuffer buffer_gun_2; //пушка игрока
+	sf::Sound sound_gun_2;
+	sf::SoundBuffer buffer_gun_3; //пушка игрока
+	sf::Sound sound_gun_3;
+	sf::SoundBuffer buffer_gun_4; //пушка игрока
+	sf::Sound sound_gun_4;
+	sf::SoundBuffer buffer_gun_5; //пушка игрока
+	sf::Sound sound_gun_5;
 
 	sf::SoundBuffer buffer_bite_1; //укус монстра
 	sf::Sound sound_bite_1;
@@ -284,6 +321,12 @@ private:
 
 	sf::SoundBuffer buffer_hit_2; //удар снаряда в плоть
 	sf::Sound sound_hit_2;
+
+	sf::SoundBuffer buffer_hit_3; //удар электричества
+	sf::Sound sound_hit_3;
+
+	sf::SoundBuffer buffer_hit_4; //удар огнем
+	sf::Sound sound_hit_4;
 
 	sf::SoundBuffer buffer_explode_1; //взрыв
 	sf::Sound sound_explode_1;
@@ -313,7 +356,7 @@ private:
 	void draw_monsters();
 	void create_VFX(double VFX_X, double VFX_Y, int VFX_type, double scale);
 	void draw_VFX();
-	void create_VFX_remains(double VFX_X, double VFX_Y, int VFX_type);
+	void create_VFX_remains(double VFX_X, double VFX_Y, int VFX_type, double angle = 0.0);
 	void draw_VFX_remains();
 	void draw_monster_bullets();
 	void make_explosion(double X, double Y, double power, bool player_damage, bool monster_damage);
@@ -323,6 +366,9 @@ private:
 	int check_obj_collision(double X, double Y, double offset);
 	void reset_Rover();
 	void reset_world();
+	void draw_flying_loot();
+	void add_flying_loot(int type, int X, int Y);
+	void spawn_monster(int i, double X, double Y);
 
 
 public:
@@ -346,4 +392,13 @@ public:
 	int get_player_energy_prc();
 	void transfer_to_base();
 	void transfer_res_to_orbit(unsigned int *res_arr);
+	void get_resources(int *res_arr);
+	int get_weapon_to_take();
+	int get_upgrade_to_take();
+	WeaponData get_weapon_data();
+	void set_weapon(WeaponData weapon_data);
+	int get_slots_number();
+	void get_slots_array(int *slots_arr);
+	void install_upgrade(int slot_num, int upgrade_type);
+	void drop_flying_loot(int metal_drop, int crystal_drop, int uran_drop, double X, double Y);
 };

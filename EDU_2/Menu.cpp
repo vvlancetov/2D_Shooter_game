@@ -50,15 +50,18 @@ Menu::Menu(sf::RenderWindow* window, std::string path)
 	options_menu_Language_Texture.loadFromFile(game_path + "Assets\\Pictures\\Language_Menu.png");
 	options_menu_Language_Sprite.setTexture(options_menu_Language_Texture);
 
-	pause_menu_Texture.loadFromFile(game_path + "Assets\\Pictures\\Pause_Menu.png");
-	pause_menu_Sprite.setTexture(pause_menu_Texture);
+	pause_menu_Mission_Texture.loadFromFile(game_path + "Assets\\Pictures\\Pause_Menu_Mission.png");
+	pause_menu_Mission_Sprite.setTexture(pause_menu_Mission_Texture);
+
+	pause_menu_Orbit_Texture.loadFromFile(game_path + "Assets\\Pictures\\Pause_Menu_Orbit.png");
+	pause_menu_Orbit_Sprite.setTexture(pause_menu_Orbit_Texture);
 
 	mouse_pointer_Texture.loadFromFile(game_path + "Assets\\Pointers\\Mouse_pointer_1.png");
 	mouse_pointer_Sprite.setTexture(mouse_pointer_Texture);
 
 };
 
-int Menu::run(bool pause)
+int Menu::run(bool pause, bool on_orbit)
 {
 
 	//флаг вызова из игры (пауза)
@@ -264,12 +267,21 @@ int Menu::run(bool pause)
 	//Главное меню в режиме паузы
 	if (Current_Menu == Menu_states::MAIN_MENU && isPause)
 	{
+		//главное меню в режиме паузы
 		game_window->clear(sf::Color::Black);
 		bg_pause_menu_Sprite.setScale(kx, ky);
 		game_window->draw(bg_pause_menu_Sprite);
 		
-		pause_menu_Sprite.setScale(kx, ky);
-		game_window->draw(pause_menu_Sprite);
+		if (on_orbit)
+		{
+			pause_menu_Orbit_Sprite.setScale(kx, ky);
+			game_window->draw(pause_menu_Orbit_Sprite);
+		}
+		else 
+		{
+			pause_menu_Mission_Sprite.setScale(kx, ky);
+			game_window->draw(pause_menu_Mission_Sprite);
+		}
 
 		//задаем координаты областей
 		int Continue_area[4] = { int(200.0 * ky), int(300.0 * ky), int(500.0 * kx), int(1420.0 * kx) };

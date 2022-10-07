@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
         if (programm_state == States::IN_MENU)
         {
             //printf("main menu \n");
-            int result = main_menu.run(false);
+            int result = main_menu.run(false, false);
             
             if (result) printf("main_menu.run() returned %i\n", result);
 

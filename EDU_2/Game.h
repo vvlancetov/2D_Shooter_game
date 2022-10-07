@@ -55,6 +55,19 @@ private:
 	sf::Texture Planet_Jump_Texture;
 	sf::Sprite Planet_Jump_Sprite;
 
+	sf::Texture Dialog_weapon_Texture;
+	sf::Sprite Dialog_weapon_Sprite;
+
+	sf::Texture Dialog_Upgrade_Texture;
+	sf::Sprite Dialog_Upgrade_Sprite;
+
+	sf::Texture Dialog_Upgrade_Text_Texture;
+	sf::Sprite Dialog_Upgrade_Text_Sprite;
+
+
+	//картинки оружия
+	sf::Sprite weapon_tile_Sprite;
+	sf::Texture weapon_tile_Texture;
 
 	//музыка
 	sf::Music music_orbit;
@@ -82,11 +95,14 @@ private:
 	//уровни апгрейдов вездехода
 	unsigned int rover_upgrades[6];
 
-	enum class GameStates { ORBIT, MISSION, PAUSE_MISSION, PAUSE_ORBIT, BASE_MISSION, SHIP_MISSION, ROVER_ORBIT, SUIT_ORBIT, FLY_AWAY_ORBIT};
+	enum class GameStates { ORBIT, MISSION, PAUSE_MISSION, PAUSE_ORBIT, BASE_MISSION, SHIP_MISSION, ROVER_ORBIT, SUIT_ORBIT, FLY_AWAY_ORBIT, TAKE_UPGRADE_MISSION, TAKE_WEAPON_MISSION };
 	GameStates game_state;
 	int check_mouse_hover(int x, int y, int* area);
 	void draw_box(int* area_coord, sf::Color color);
 	void draw_orbit_interface(double kx, double ky);
+	void get_weapon_name(int weapon_type, wchar_t *buffer);
+	void get_weapon_quality_name(int weapon_type, wchar_t* buffer);
+	sf::Color get_color_by_weapon_quality(int quality);
 
 	sf::Font font;
 	sf::Text text;
@@ -96,6 +112,8 @@ private:
 
 	//объект с опциями
 	Options* game_options;
+
+
 
 public:
 	Game(sf::RenderWindow* window, std::string path, Menu *menu_object); //конструктор
@@ -110,6 +128,8 @@ public:
 	void set_options_object(Options* game_options);
 	bool check_prices(unsigned int* prices);
 	void spend_money(unsigned int* prices);
+	double calculate_damage(int weapon_type, int weapon_color, int weapon_level);
+	double calculate_fire_rate(int weapon_type, int weapon_color, int weapon_level);
 };
 
 
