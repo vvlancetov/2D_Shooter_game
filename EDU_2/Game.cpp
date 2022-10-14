@@ -18,6 +18,7 @@ Game::Game(sf::RenderWindow* window, std::string path, Menu *menu_object)
     game_window = window;
     game_path = path;
     game_menu = menu_object;
+    
     //набор данных для рендеринга окна
     render_res_X = floor(game_window->getView().getSize().x);
     render_res_Y = floor(game_window->getView().getSize().y);
@@ -32,60 +33,88 @@ Game::Game(sf::RenderWindow* window, std::string path, Menu *menu_object)
     
      //картинка на орбитальной базе
      bg_Planet_Texture.loadFromFile(game_path + "Assets\\Pictures\\Planet_1.png");
+     bg_Planet_Texture.setSmooth(1);
      bg_Planet_Sprite.setTexture(bg_Planet_Texture);
 
      bg_SpaceShip_Texture.loadFromFile(game_path + "Assets\\Pictures\\Orbital_base_1.png");
+     bg_SpaceShip_Texture.setSmooth(1);
      bg_SpaceShip_Sprite.setTexture(bg_SpaceShip_Texture);
 
      Rover_Texture.loadFromFile(game_path + "Assets\\Pictures\\Rover_1.png");
+     Rover_Texture.setSmooth(1);
      Rover_Sprite.setTexture(Rover_Texture);
      
      Interface_Texture.loadFromFile(game_path + "Assets\\Pictures\\Orbital_Interface.png");
+     Interface_Texture.setSmooth(1);
      Interface_Sprite.setTexture(Interface_Texture);
      
      mouse_pointer_Texture.loadFromFile(game_path + "Assets\\Pointers\\Mouse_pointer_1.png");
+     mouse_pointer_Texture.setSmooth(1);
      mouse_pointer_Sprite.setTexture(mouse_pointer_Texture);
      
      bg_mission_launch_Texture.loadFromFile(game_path + "Assets\\Pictures\\Starting_Mission_Background.png");
+     bg_mission_launch_Texture.setSmooth(1);
      bg_mission_launch_Sprite.setTexture(bg_mission_launch_Texture);
 
      suit_Texture.loadFromFile(game_path + "Assets\\Pictures\\Suit.png");
+     suit_Texture.setSmooth(1);
      suit_Sprite.setTexture(suit_Texture);
 
      Dialog_Base_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Base_dialog.png");
+     Dialog_Base_Texture.setSmooth(1);
      Dialog_Base_Sprite.setTexture(Dialog_Base_Texture);
 
      Dialog_Ship_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Ship_dialog.png");
+     Dialog_Ship_Texture.setSmooth(1);
      Dialog_Ship_Sprite.setTexture(Dialog_Ship_Texture);
 
      Dialog_Fly_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_fly.png");
+     Dialog_Fly_Texture.setSmooth(1);
      Dialog_Fly_Sprite.setTexture(Dialog_Fly_Texture);
 
      Dialog_Rover_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_rover_up.png");
+     Dialog_Rover_Texture.setSmooth(1);
      Dialog_Rover_Sprite.setTexture(Dialog_Rover_Texture);
 
      Dialog_Suit_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_suit.png");
+     Dialog_Suit_Texture.setSmooth(1);
      Dialog_Suit_Sprite.setTexture(Dialog_Suit_Texture);
 
      Planet_Jump_Texture.loadFromFile(game_path + "Assets\\Pictures\\Jump.png");
+     Planet_Jump_Texture.setSmooth(1);
      Planet_Jump_Sprite.setTexture(Planet_Jump_Texture);
 
      Dialog_weapon_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_weapon.png");
+     Dialog_weapon_Texture.setSmooth(1);
      Dialog_weapon_Sprite.setTexture(Dialog_weapon_Texture);
 
      Dialog_Upgrade_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_upgrade.png");
+     Dialog_Upgrade_Texture.setSmooth(1);
      Dialog_Upgrade_Sprite.setTexture(Dialog_Upgrade_Texture);
 
      Dialog_Upgrade_Text_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Upgrade_Text.png");
+     Dialog_Upgrade_Text_Texture.setSmooth(1);
      Dialog_Upgrade_Text_Sprite.setTexture(Dialog_Upgrade_Text_Texture);
 
      weapon_tile_Texture.loadFromFile(game_path + "Assets\\Textures\\Weapon_tiles.png");
+     weapon_tile_Texture.setSmooth(1);
      weapon_tile_Sprite.setTexture(weapon_tile_Texture);
+
+     Dialog_Death_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Death_dialog.png");
+     Dialog_Death_Texture.setSmooth(1);
+     Dialog_Death_Sprite.setTexture(Dialog_Death_Texture);
+
+     Dialog_Help1_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_Help_1.png");
+     Dialog_Help1_Texture.setSmooth(1);
+     Dialog_Help1_Sprite.setTexture(Dialog_Help1_Texture);
+
+     Dialog_Help2_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_Help_2.png");
+     Dialog_Help2_Texture.setSmooth(1);
+     Dialog_Help2_Sprite.setTexture(Dialog_Help2_Texture);
 
      //загружаем шрифт
      if (!font.loadFromFile(game_path + "Assets\\Fonts\\arialnb.ttf")) printf("font load error\n");
      text.setFont(font); // font is a sf::Font
-
 
      click_block = true;
 }
@@ -105,10 +134,10 @@ int Game::Run(sf::Time elapsed)
 
     // get the local mouse position (relative to a window)
     sf::Vector2i CursorPosition = sf::Mouse::getPosition(*game_window);
-
+    
     if (game_state == GameStates::ORBIT)
     {
-                
+
         //рисуем интерфейс
         draw_orbit_interface(kx, ky);
 
@@ -119,6 +148,8 @@ int Game::Run(sf::Time elapsed)
             music_orbit.play();
             music_orbit.setVolume(game_options->music_volume);
         }
+
+        if (show_Help_1) { game_state = GameStates::ORBIT_HELP_1; return 0; } //если окно подсказок еще не отображалось - переходим на вспомогательную ветку
 
         //задаем координаты областей
         int Exit_area[4] = { int(19.0 * ky), int(75.0 * ky), int(21.0 * kx), int(195.0 * kx) };//top,bottom,left,right
@@ -140,7 +171,6 @@ int Game::Run(sf::Time elapsed)
 
         //финальная отрисовка окна
         game_window->display();
-
 
         //проверяем нажатия клавишь
         if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
@@ -216,7 +246,6 @@ int Game::Run(sf::Time elapsed)
         {
             click_block = false;
         }
-
     }
 
     if (game_state == GameStates::MISSION)
@@ -228,6 +257,8 @@ int Game::Run(sf::Time elapsed)
             if (result == 0)
             {
                 //ничего не делаем
+                click_block = true;
+                if (show_Help_2) game_state = GameStates::MISSION_HELP_1; //при первом запуске показываем помощь
             }
 
             if (result == 1)
@@ -285,6 +316,15 @@ int Game::Run(sf::Time elapsed)
                 click_block = true;
                 game_state = GameStates::TAKE_UPGRADE_MISSION;
             }
+
+            if (result == 7)
+            {
+                //смерть игрока
+                printf("Game -> Death\n");
+                click_block = true;
+                game_state = GameStates::DEATH_MISSION;
+            }
+
 
 
 
@@ -370,7 +410,7 @@ int Game::Run(sf::Time elapsed)
         game_window->draw(Dialog_Base_Sprite);
         
         //рисуем данные по ресурсам
-        text.setCharacterSize(36); // in pixels, not points!
+        text.setCharacterSize(24 * ky); // in pixels, not points!
 
         //деньги
         text.setFillColor(sf::Color::Yellow);
@@ -415,11 +455,14 @@ int Game::Run(sf::Time elapsed)
         draw_box(&energy[0], sf::Color(0, 255, 255, 255));
 
         //устанавливаем цены ремонта
+        int price_for_health = 0;
+        int price_for_recharge = 0;
 
         if (current_mission->get_player_health_prc() < 100)
         {
             //цена пропорциональна уровню планеты
-            sprintf_s(buffer, "%i RUB", (100 - current_mission->get_player_health_prc())* planet_level);
+            price_for_health = (int)floor((100 - current_mission->get_player_health_prc())* planet_level);
+            sprintf_s(buffer, "%i RUB", price_for_health);
             text.setCharacterSize(20);
             text.setPosition(1219.0 * kx, 613.0 * ky);
             text.setString(buffer);
@@ -430,7 +473,8 @@ int Game::Run(sf::Time elapsed)
         if (current_mission->get_player_energy_prc() < 100)
         {
             //цена пропорциональна уровню планеты
-            sprintf_s(buffer, "%i RUB", (100 - current_mission->get_player_energy_prc()) * planet_level);
+            price_for_recharge = (int)floor((100 - current_mission->get_player_energy_prc()) * planet_level);
+            sprintf_s(buffer, "%i RUB", price_for_recharge);
             text.setCharacterSize(20);
             text.setPosition(1320.0 * kx, 613.0 * ky);
             text.setString(buffer);
@@ -474,12 +518,12 @@ int Game::Run(sf::Time elapsed)
                 resource_money += arr[0];
                 resource_metal += arr[1];
                 resource_crystal += arr[2];
-                resource_uran += arr[4];
+                resource_uran += arr[3];
                 
-                printf("Base -> ResUP (money)  %i\n", arr[0]);
-                printf("Base -> ResUP (metal) %i\n", arr[1]);
-                printf("Base -> ResUP (crystal) %i\n", arr[2]);
-                printf("Base -> ResUP (uran) %i\n", arr[3]);
+                //printf("Base -> ResUP (money)  %i\n", arr[0]);
+                //printf("Base -> ResUP (metal) %i\n", arr[1]);
+                //printf("Base -> ResUP (crystal) %i\n", arr[2]);
+                //printf("Base -> ResUP (uran) %i\n", arr[3]);
 
             }
 
@@ -513,6 +557,7 @@ int Game::Run(sf::Time elapsed)
             {
                 //ремонт
                 click_block = true;
+                current_mission->repair(price_for_health);
                 printf("Base -> Repair\n");
 
             }
@@ -521,7 +566,8 @@ int Game::Run(sf::Time elapsed)
             if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Charge_area[0]))
             {
                 //зарядка
-                printf("Base -> Charge\n");  //выход в главное меню
+                printf("Base -> Charge\n");
+                current_mission->recharge(price_for_recharge);
                 click_block = true;
                 
             }
@@ -1206,9 +1252,9 @@ int Game::Run(sf::Time elapsed)
                 sf::sleep(sf::seconds(1));
                 planet_number++;
                 
-                planet_level = 1 + floor(rand() * (planet_number / 2) / (RAND_MAX + 1));
+                planet_level = 1 + floor(rand() * (planet_number / 2) / (RAND_MAX + 1.0));
                 if (planet_level > 9) planet_level = 9;
-                planet_type = 1 + floor(rand() * 5.0 / (RAND_MAX + 1));
+                planet_type = 1 + floor(rand() * 5.0 / (RAND_MAX + 1.0));
                 
                 if (planet_type == 1) bg_Planet_Texture.loadFromFile(game_path + "Assets\\Pictures\\Planet_1.png");
                 if (planet_type == 2) bg_Planet_Texture.loadFromFile(game_path + "Assets\\Pictures\\Planet_2.png");
@@ -1458,8 +1504,8 @@ int Game::Run(sf::Time elapsed)
         int slots[3];
         current_mission->get_slots_array(&slots[0]);
         //slots[0] = 1;
-        printf("slots = %i\n", active_slots);
-        printf("slots (%i, %i, %i)\n", slots[0], slots[1], slots[2]);
+        //printf("slots = %i\n", active_slots);
+        //printf("slots (%i, %i, %i)\n", slots[0], slots[1], slots[2]);
          
         //проверяем нахождение мыши над пунктами меню
         if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Get_resources_area[0]))                 draw_box(&Get_resources_area[0], sf::Color(0, 0, 0, 128));
@@ -1553,6 +1599,177 @@ int Game::Run(sf::Time elapsed)
         
     }
 
+    if (game_state == GameStates::DEATH_MISSION)
+    {
+        //игрок умер
+
+        game_window->clear(sf::Color::Black);
+
+        Screenshot_Sprite.setTexture(*current_mission->getScreenshot());
+        game_window->draw(Screenshot_Sprite);
+
+        Dialog_Death_Sprite.setScale(kx, ky);
+        game_window->draw(Dialog_Death_Sprite);
+
+        //рисуем данные по ресурсам
+        text.setCharacterSize(30 * ky); // in pixels, not points!
+
+        //деньги
+        text.setFillColor(sf::Color::Yellow);
+        text.setStyle(sf::Text::Bold);
+        char buffer[50];
+        sprintf_s(buffer, "%i RUB", current_mission->get_rover_money());
+        text.setPosition(850.0 * kx, 521.0 * ky);
+        text.setString(buffer);
+        text.setOrigin(0, 0);
+        game_window->draw(text);
+
+
+        //задаем координаты областей
+        int Exit_area[4] = { int(774.0 * ky), int(845.0 * ky), int(808.0 * kx), int(1106.0 * kx) };//top,bottom,left,right
+
+        //проверяем нахождение мыши над пунктами меню
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Exit_area[0])) draw_box(&Exit_area[0], sf::Color(0, 0, 0, 128));
+
+        //рисуем курсор
+        mouse_pointer_Sprite.setPosition((float)CursorPosition.x, (float)CursorPosition.y);
+        game_window->draw(mouse_pointer_Sprite);
+
+        //финальная отрисовка окна
+        game_window->display();
+
+
+        //проверяем нажатия клавишь
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
+        {
+            // проверяем нажатие на кнопки
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &Exit_area[0]))
+            {
+                //загружаем ресурсы на орбиту
+                click_block = true;
+                //unsigned int arr[4];
+                current_mission->transfer_to_base();
+                //resource_money += arr[0];
+                current_mission->reset_Rover();
+                game_state = GameStates::BASE_MISSION;
+            }
+        }
+
+        //обработка нажатия ESC
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && !click_block)
+        {
+            //game_state = GameStates::PAUSE_ORBIT;
+        }
+
+        //снимаем блокировку даблкликов
+        if (!(sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)))
+        {
+            click_block = false;
+        }
+
+        return(0);
+
+    }
+
+    if (game_state == GameStates::ORBIT_HELP_1)
+    {
+        //рисуем интерфейс
+        draw_orbit_interface(kx, ky);
+        //рисуем инструктаж
+        Dialog_Help1_Sprite.setScale(kx, ky);
+        game_window->draw(Dialog_Help1_Sprite);
+        
+        //задаем координаты областей
+        int OK_area[4] = { int(801.0 * ky), int(865.0 * ky), int(809.0 * kx), int(1095.0 * kx) };//top,bottom,left,right
+
+        //проверяем нахождение мыши над пунктами меню
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &OK_area[0])) draw_box(&OK_area[0], sf::Color(0, 0, 0, 128));
+
+        //рисуем курсор
+        mouse_pointer_Sprite.setPosition((float)CursorPosition.x, (float)CursorPosition.y);
+        game_window->draw(mouse_pointer_Sprite);
+
+        //финальная отрисовка окна
+        game_window->display();
+
+        //проверяем нажатия клавишь
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
+        {
+            // проверяем нажатие на кнопки
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &OK_area[0]))
+            {
+                click_block = true;
+                show_Help_1 = false;
+                game_state = GameStates::ORBIT;
+                //return(0);
+            }
+        }
+
+        //обработка нажатия ESC
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && !click_block)
+        {
+            //game_state = GameStates::PAUSE_ORBIT;
+        }
+
+        //снимаем блокировку даблкликов
+        if (!(sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)))
+        {
+            click_block = false;
+        }
+    }
+
+    if (game_state == GameStates::MISSION_HELP_1)
+    {
+        //рисуем скриншот
+        Screenshot_Sprite.setTexture(*current_mission->getScreenshot());
+        //printf("tex2 x %i \n", Screenshot_Sprite.getTexture()->getSize().x);
+        Screenshot_Sprite.setColor(sf::Color(255, 255, 255, 255));
+        game_window->clear(sf::Color::Black);
+        game_window->draw(Screenshot_Sprite);
+        //printf("tex2");
+
+        //рисуем инструктаж
+        Dialog_Help2_Sprite.setScale(kx, ky);
+        game_window->draw(Dialog_Help2_Sprite);
+
+        //задаем координаты областей
+        int OK_area[4] = { int(801.0 * ky), int(865.0 * ky), int(818.0 * kx), int(1104.0 * kx) };//top,bottom,left,right
+
+        //проверяем нахождение мыши над пунктами меню
+        if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &OK_area[0])) draw_box(&OK_area[0], sf::Color(0, 33, 0, 128));
+
+        //рисуем курсор
+        mouse_pointer_Sprite.setPosition((float)CursorPosition.x, (float)CursorPosition.y);
+        game_window->draw(mouse_pointer_Sprite);
+
+        //финальная отрисовка окна
+        game_window->display();
+
+        //проверяем нажатия клавишь
+        if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
+        {
+            // проверяем нажатие на кнопки
+            if (check_mouse_hover((int)CursorPosition.x, (int)CursorPosition.y, &OK_area[0]))
+            {
+                click_block = true;
+                show_Help_2 = false;
+                game_state = GameStates::MISSION;
+                //return(0);
+            }
+        }
+
+        //обработка нажатия ESC
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && !click_block)
+        {
+            //game_state = GameStates::PAUSE_ORBIT;
+        }
+
+        //снимаем блокировку даблкликов
+        if (!(sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)))
+        {
+            click_block = false;
+        }
+    }
 
     return(0); //продолжаем
 }
@@ -1572,7 +1789,10 @@ int Game::Reset()
         rover_upgrades[i] = 0;
         suit_upgrades[i] = 0;
     }
-
+    GameExists = true;
+    game_menu->set_gameExists(true);
+    show_Help_1 = true;
+    show_Help_2 = true;
     return(1); //все ОК
 }
 
@@ -1633,7 +1853,18 @@ bool Game::Load()
         char_to_int(buffer, &rover_upgrades[i]); hash = h_function(hash + rover_upgrades[i]);
         printf("suit_upgrade = %i rover_upgrade = %i\n", suit_upgrades[i], rover_upgrades[i]);
     }
+    
+    unsigned int tmp = 0;
+    fd.read(buffer, 8);
+    char_to_int(buffer, &tmp); hash = h_function(hash + tmp);
+    show_Help_1 = (bool)tmp;
+    printf("help 1 = %i\n", show_Help_1);
 
+    fd.read(buffer, 8);
+    char_to_int(buffer, &tmp); hash = h_function(hash + tmp);
+    show_Help_2 = (bool)tmp;
+    printf("help 2 = %i\n", show_Help_1);
+    
     //проверяем хеш
     unsigned int hash_from_file;
     fd.read(buffer, 8);
@@ -1645,6 +1876,7 @@ bool Game::Load()
     }
     
     //значения для отладки
+    /*
     resource_money = 1000000000;
     resource_metal = 10000000;
     resource_crystal = 100000000;
@@ -1654,8 +1886,10 @@ bool Game::Load()
     planet_level = 1;
     //for (int i = 0; i < 6; ++i) suit_upgrades[i] = i;
     //for (int i = 0; i < 6; ++i) rover_upgrades[i] = i;
-
+    */
+    
     GameExists = true;
+    game_menu->set_gameExists(true);
     return (true);
 }
 
@@ -1688,8 +1922,15 @@ int Game::Save()
             int_to_char(&rover_upgrades[i], &buffer[0]); hash = h_function(hash + rover_upgrades[i]);
             fd.write(buffer, 8);
         }
+    unsigned int tmp = (int)show_Help_1;
+    int_to_char(&tmp, &buffer[0]); hash = h_function(hash + tmp);
+    fd.write(buffer, 8);
+    tmp = (int)show_Help_2;
+    int_to_char(&tmp, &buffer[0]); hash = h_function(hash + tmp);
+    fd.write(buffer, 8);
     int_to_char(&hash, &buffer[0]);
     fd.write(buffer, 8);
+
     fd.close();
     return (0);
 }
@@ -1791,33 +2032,33 @@ void Game::draw_orbit_interface(double kx, double ky)
     text.setStyle(sf::Text::Bold);
     char buffer[50];
     sprintf_s(buffer, "%i", resource_money);
-    text.setPosition(1118.0 * kx, 18.0 * ky);
+    text.setPosition(949.0 * kx, 18.0 * ky);
     text.setString(buffer);
-    text.setOrigin(text.getLocalBounds().width, 0);
+    text.setOrigin(0, 0);
     game_window->draw(text);
     //уран
     text.setFillColor(sf::Color(153, 203, 253, 255));
     text.setStyle(sf::Text::Bold);
     sprintf_s(buffer, "%i", resource_uran);
-    text.setPosition(1370.0 * kx, 18.0 * ky);
+    text.setPosition(1210.0 * kx, 18.0 * ky);
     text.setString(buffer);
-    text.setOrigin(text.getLocalBounds().width, 0);
+    text.setOrigin(0, 0);
     game_window->draw(text);
     //кристаллы
     text.setFillColor(sf::Color(153, 203, 253, 255));
     text.setStyle(sf::Text::Bold);
     sprintf_s(buffer, "%i", resource_crystal);
-    text.setPosition(1622.0 * kx, 18.0 * ky);
+    text.setPosition(1461.0 * kx, 18.0 * ky);
     text.setString(buffer);
-    text.setOrigin(text.getLocalBounds().width, 0);
+    text.setOrigin(0, 0);
     game_window->draw(text);
     //металл
     text.setFillColor(sf::Color(153, 203, 253, 255));
     text.setStyle(sf::Text::Bold);
     sprintf_s(buffer, "%i", resource_metal);
-    text.setPosition(1854.0 * kx, 18.0 * ky);
+    text.setPosition(1717.0 * kx, 18.0 * ky);
     text.setString(buffer);
-    text.setOrigin(text.getLocalBounds().width, 0);
+    text.setOrigin(0, 0);
     game_window->draw(text);
 
     //рисуем данные по планете
@@ -1856,9 +2097,9 @@ double Game::calculate_damage(int weapon_type, int weapon_color, int weapon_leve
     if (weapon_type == 0) damage = 1.0;
     if (weapon_type == 1) damage = 0.5;
     if (weapon_type == 2) damage = 2.0;
-    if (weapon_type == 3) damage = 1.0;
-    if (weapon_type == 4) damage = 1.0;
-    if (weapon_type == 5) damage = 1.0;
+    if (weapon_type == 3) damage = 1.3;
+    if (weapon_type == 4) damage = 1.2;
+    if (weapon_type == 5) damage = 1.1;
 
     damage *= (1.0 + weapon_color * 0.08);
     damage *= (1.0 + weapon_level * 0.02);
@@ -1872,8 +2113,8 @@ double Game::calculate_fire_rate(int weapon_type, int weapon_color, int weapon_l
     if (weapon_type == 0) fire_rate = 2.0;
     if (weapon_type == 1) fire_rate = 4.0;
     if (weapon_type == 2) fire_rate = 1.0;
-    if (weapon_type == 3) fire_rate = 2.0;
-    if (weapon_type == 4) fire_rate = 2.0;
+    if (weapon_type == 3) fire_rate = 1.8;
+    if (weapon_type == 4) fire_rate = 1.9;
     if (weapon_type == 5) fire_rate = 2.0;
 
     fire_rate *= (1.0 + weapon_color * 0.05);

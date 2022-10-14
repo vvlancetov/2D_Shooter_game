@@ -18,11 +18,15 @@ private:
 	//текстура для меню паузы
 	sf::Texture pause_menu_Texture;
 	sf::Sprite pause_menu_Sprite;
-	//курсоры мыши
+	//курсоры мыши и другие указатели
 	sf::Sprite mouse_pointer_Sprite;
 	sf::Texture mouse_pointer_Texture;
 	sf::Sprite mouse_pointer_2_Sprite;
 	sf::Texture mouse_pointer_2_Texture;
+	sf::Sprite target_pointer_Sprite;
+	sf::Texture target_pointer_Texture;
+
+
 	//текстуры тела и оружия
 	sf::Sprite body_tile_Sprite;
 	sf::Texture body_tile_Texture;
@@ -66,6 +70,9 @@ private:
 	//текстура следов
 	sf::Texture tires_Texture;
 	sf::Sprite tires_Sprite;
+	//текстура силового поля
+	sf::Texture shield_Texture;
+	sf::Sprite shield_Sprite;
 
 	//спрайты диалогов
 	sf::Texture death_dialog_Texture;
@@ -74,6 +81,10 @@ private:
 	sf::Sprite evac_dialog_Sprite;
 	sf::Texture base_dialog_Texture;
 	sf::Sprite base_dialog_Sprite;
+
+	//спрайты апгрейдов
+	sf::Texture int_upgrade_Texture;
+	sf::Sprite int_upgrade_Sprite;
 
 	//данные для рендеринга
 	double render_res_X;
@@ -112,6 +123,9 @@ private:
 	//данные планеты
 	unsigned int planet_type, planet_level;
 
+	//флаг для скрина в начале миссии
+	int first_launch = 1;
+
 	//данные персонажа
 	struct player
 	{
@@ -139,12 +153,13 @@ private:
 		double weapon_animation_time;		//тайминги анимации в секундах
 		double weapon_animation_time_MAX;
 		double weapon_direction_rad;
-		int collected_money;
-		int collected_metal;
-		int collected_crystal;
-		int collected_uran;
+		unsigned int collected_money;
+		unsigned int collected_metal;
+		unsigned int collected_crystal;
+		unsigned int collected_uran;
 		WeaponData weapon; 
 		double tires_XY[2];
+		
 	};
 	player Rover;
 	
@@ -230,6 +245,7 @@ private:
 	};
 	monster* monster_array;
 	int monster_count;
+	int sector_count[16];
 
 	//массив выстрелов игрока
 	struct player_bullet
@@ -242,10 +258,14 @@ private:
 		double X;
 		double Y;
 		double ttl;
+		int lives;
+		int monters_hit[3];
 	};
 	player_bullet* player_bullet_array;
 	int player_bullet_count;
 	double player_weapon_cooldown;
+	double player_weapon_cooldown_G;
+	double player_shield_cooldown;
 
 	//массив выстрелов монстров
 	struct monster_bullet
@@ -291,6 +311,21 @@ private:
 	};
 	VFX_remains* VFX_remains_array;
 	int VFX_remains_pointer;
+
+	//массив гранат
+	struct Grenade
+	{
+		char isAlive = 0; // 0 - свободный слот, 1 - занято
+		double X;
+		double Y;
+		double V;
+		double ttl;
+		double dX;
+		double dY;
+		double V_Velocity;
+		double power;
+	};
+	Grenade* grenades_array;
 
 	sf::Font font;
 	sf::Text text;
@@ -340,6 +375,8 @@ private:
 	//объект с опциями
 	Options* game_options;
 
+	//задержка после смерти игрока
+	double death_delay;
 
 	//внутренние функции
 	int check_mouse_hover(int x, int y, int* area);
@@ -360,16 +397,18 @@ private:
 	void draw_VFX_remains();
 	void draw_monster_bullets();
 	void make_explosion(double X, double Y, double power, bool player_damage, bool monster_damage);
-	void make_stationary_obj();
+	void generate_stationary_obj();
 	void draw_stationary_obj();
 	void move_player(int acceleration);
 	int check_obj_collision(double X, double Y, double offset);
-	void reset_Rover();
+	
 	void reset_world();
 	void draw_flying_loot();
 	void add_flying_loot(int type, int X, int Y);
 	void spawn_monster(int i, double X, double Y);
-
+	void draw_flying_grenades();
+	void draw_shield();
+	sf::Vector3f find_nearest_enemy();
 
 public:
 	Mission(sf::RenderWindow *window, std::string path);
@@ -383,6 +422,7 @@ public:
 	int in_base();
 	int player_death();
 	int get_collected_money();
+	int get_rover_money();
 	int get_collected_metal();
 	int get_collected_crystal();
 	int get_collected_uran();
@@ -401,4 +441,7 @@ public:
 	void get_slots_array(int *slots_arr);
 	void install_upgrade(int slot_num, int upgrade_type);
 	void drop_flying_loot(int metal_drop, int crystal_drop, int uran_drop, double X, double Y);
+	void reset_Rover();
+	void repair(int price);
+	void recharge(int price);
 };

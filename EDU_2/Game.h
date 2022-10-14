@@ -64,6 +64,15 @@ private:
 	sf::Texture Dialog_Upgrade_Text_Texture;
 	sf::Sprite Dialog_Upgrade_Text_Sprite;
 
+	sf::Texture Dialog_Death_Texture;
+	sf::Sprite Dialog_Death_Sprite;
+
+	sf::Texture Dialog_Help1_Texture;
+	sf::Sprite Dialog_Help1_Sprite;
+
+	sf::Texture Dialog_Help2_Texture;
+	sf::Sprite Dialog_Help2_Sprite;
+
 
 	//картинки оружия
 	sf::Sprite weapon_tile_Sprite;
@@ -76,8 +85,10 @@ private:
 	int render_res_X;
 	int render_res_Y;
 
-	bool GameExists = false;
+	bool GameExists = true;
 	std::string game_path;
+	bool show_Help_1 = true;
+	bool show_Help_2 = true;
 
 	//добытые ресурсы
 	unsigned int resource_money = 0;
@@ -95,7 +106,7 @@ private:
 	//уровни апгрейдов вездехода
 	unsigned int rover_upgrades[6];
 
-	enum class GameStates { ORBIT, MISSION, PAUSE_MISSION, PAUSE_ORBIT, BASE_MISSION, SHIP_MISSION, ROVER_ORBIT, SUIT_ORBIT, FLY_AWAY_ORBIT, TAKE_UPGRADE_MISSION, TAKE_WEAPON_MISSION };
+	enum class GameStates { ORBIT, ORBIT_HELP_1, MISSION, MISSION_HELP_1, PAUSE_MISSION, PAUSE_ORBIT, BASE_MISSION, DEATH_MISSION, SHIP_MISSION, ROVER_ORBIT, SUIT_ORBIT, FLY_AWAY_ORBIT, TAKE_UPGRADE_MISSION, TAKE_WEAPON_MISSION };
 	GameStates game_state;
 	int check_mouse_hover(int x, int y, int* area);
 	void draw_box(int* area_coord, sf::Color color);
@@ -112,8 +123,6 @@ private:
 
 	//объект с опциями
 	Options* game_options;
-
-
 
 public:
 	Game(sf::RenderWindow* window, std::string path, Menu *menu_object); //конструктор

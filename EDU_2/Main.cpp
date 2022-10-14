@@ -21,6 +21,8 @@ void char_to_int(char* buffer, unsigned int* number);
 void int_to_char(unsigned int* number, char* buffer);
 void save_config(std::string game_path, Options* game_options);
 
+
+
 //главна€ программа
 int main(int argc, char* argv[])
 {
@@ -123,11 +125,13 @@ int main(int argc, char* argv[])
             if (event.type == sf::Event::LostFocus)
                 {
                 printf("lost focus \n");
+                game_options.game_in_focus = false;
                     // можно поставить на паузу если пользователь переключил окна
                 }
             if (event.type == sf::Event::GainedFocus)
                 {
                     printf("get focus \n");
+                    game_options.game_in_focus = true;
                     //выход из паузы при получении фокуса, к примеру
                     //OutputDebugString(L"ѕолучен фокус\n");
                 }
@@ -154,7 +158,7 @@ int main(int argc, char* argv[])
 
         if (programm_state == States::IN_MENU)
         {
-            //printf("main menu \n");
+            //printf("Main -> IN_MENU\n");
             int result = main_menu.run(false, false);
             
             if (result) printf("main_menu.run() returned %i\n", result);
@@ -186,6 +190,15 @@ int main(int argc, char* argv[])
                 printf("Main -> Exit...\n");
                 main_window.close();
             }
+
+            if (result == 4)
+            {
+                //выйти из игры
+                //music_menu.stop();
+                printf("Main -> Confirm new game ...\n");
+                programm_state = States::IN_MENU;
+            }
+
         }
 
         if (programm_state == States::LOADING_GAME)
@@ -206,6 +219,7 @@ int main(int argc, char* argv[])
 
         if (programm_state == States::RUNNING_GAME)
             {
+                //printf("Main -> RUNNING_GAME\n");
                 int run_result_code = main_game.Run(elapsed);
                 // оды возврата: 0 - продолжать, 1 - выход в меню  
                 //DEL поставить на паузу, 2 - вз€ть оборудование, 3 - эвакуаци€ с уровн€, 4 - заход на базу, 5 - смерть игрока
@@ -216,112 +230,7 @@ int main(int argc, char* argv[])
                     programm_state = States::IN_MENU;
                     printf("Main -> State::IN_MENU\n");
                 }
-
-                /*
-                if (run_result_code==1)
-                {
-                    //game_last_state = game_state;
-                    game_state = States::PAUSED;
-                }
-
-                if (run_result_code == 2)
-                {
-                    game_state = States::CHANGE_EQUIPMENT;
-                }
-
-                if (run_result_code == 3)
-                {
-                    game_state = States::EVACUATION;
-                }
-
-                if (run_result_code == 4)
-                {
-                    game_state = States::BASE;
-                }
-
-                if (run_result_code == 5)
-                {
-                    game_state = States::DEATH;
-                }
-                */
             }
-        
-        /*
-        if (game_state == States::CHANGE_EQUIPMENT)
-        {
-            int result_code = mission.take_equipment();
-            // оды возврата: 0 - продолжать, 1 - вернутьс€ в основной поток игры
-            if (result_code == 1) 
-            {
-                game_state = States::RUNNING_GAME;
-            }
-        }
-
-        if (game_state == States::PAUSED)
-            {
-                int pause_result_code = mission.pause(elapsed);
-                // оды возврата: 0 - продолжать, 1 - сн€ть паузу, 2 - выход в главное меню
-                if (pause_result_code == 1)
-                {
-                    game_state = game_last_state;//восстанавливаем состо€ние игры до паузы
-                }
-                if (pause_result_code == 2) game_state = States::MAIN_MENU;
-            }
-        
-        if (game_state == States::MAIN_MENU)
-        {
-            int menu_result_code = main_menu.run();
-            //  оды возврата: 0 - ничего   1 - нова€ игра   2 - выход
-
-            if (menu_result_code == 1) game_state = States::STARTING_GAME;
-
-            if (menu_result_code == 2) main_window.close();
-        
-        }
-    
-        if (game_state == States::EVACUATION)
-        {
-            int menu_result_code = mission.evacuate();
-            //  оды возврата: 0 - ничего   1 - переход на главное меню (временно)
-
-            if (menu_result_code == 1) game_state = States::MAIN_MENU;
-            //printf("evac branch\n");
-            //sf::sleep(sf::milliseconds(100));
-            //if (menu_result_code == 2) main_window.close();
-        }
-
-        if (game_state == States::BASE)
-        {
-            int menu_result_code = mission.in_base();
-            //  оды возврата: 0 - ничего   1 - продолжение игры
-
-            if (menu_result_code == 1)
-            {
-                game_state = States::RUNNING_GAME;
-                sf::sleep(sf::milliseconds(5));
-            }
-
-            //if (menu_result_code == 2) main_window.close();
-            //printf("base branch\n");
-            
-        }
-    
-        if (game_state == States::DEATH)
-        {
-            int menu_result_code = mission.player_death();
-            //  оды возврата: 0 - ничего   1 - возврат на базу 2 - возврат в меню (временно)
-
-            if (menu_result_code == 1)
-            {
-                game_state = States::RUNNING_GAME;
-                sf::sleep(sf::milliseconds(5));
-            }
-
-            if (menu_result_code == 2) game_state = States::MAIN_MENU;
-            //printf("base branch\n");
-
-        }
-        */
 }
 
     //завершение программы

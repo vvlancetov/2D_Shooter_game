@@ -2,6 +2,7 @@
 #include <SFML/Audio.hpp>
 
 //объявления типов и вспомогательных структур
+
 struct Options
 {
     unsigned int sound_volume = 0;
@@ -18,6 +19,7 @@ struct Options
     sf::Music *ptr_music_game = NULL;
     sf::Music *ptr_music_mission = NULL;
     unsigned int language = 0;
+    bool game_in_focus = true;
 };
 
 class WeaponData
@@ -45,11 +47,11 @@ public:
     int get_ammo_speed()
     {
         if (type == 0) return 2000; //пушка
-        if (type == 1) return 2000; //пулемет
+        if (type == 1) return 2200; //пулемет
         if (type == 2) return 800; //ракета
-        if (type == 3) return 1200; //плазма
+        if (type == 3) return 1100; //плазма
         if (type == 4) return 1200;  //электро
-        if (type == 5) return 1200; //холод
+        if (type == 5) return 1300; //холод
 
         return 2000; //микросекунды
     }

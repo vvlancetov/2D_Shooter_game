@@ -19,44 +19,67 @@ Menu::Menu(sf::RenderWindow* window, std::string path)
 	//буфер для ложных кликов
 	click_block = true;
 
+	//существует ли текущая игра
+	gameExists = false;
+
 	//пауза ли сейчас
 	isPause = false;
 
 	//загрузка текстур
 	bg_main_menu_Texture.loadFromFile(game_path + "Assets\\Pictures\\Menu_Background_picture.png");
+	bg_main_menu_Texture.setSmooth(1);
 	bg_main_menu_Sprite.setTexture(bg_main_menu_Texture);
 
 	bg_options_menu_Texture.loadFromFile(game_path + "Assets\\Pictures\\Menu_Background_picture_2.png");
+	bg_options_menu_Texture.setSmooth(1);
 	bg_options_menu_Sprite.setTexture(bg_options_menu_Texture);
 
 	bg_pause_menu_Texture.loadFromFile(game_path + "Assets\\Pictures\\Pause_Background_picture.png");
+	bg_pause_menu_Texture.setSmooth(1);
 	bg_pause_menu_Sprite.setTexture(bg_pause_menu_Texture);
 
 	main_menu_Texture.loadFromFile(game_path + "Assets\\Pictures\\Main_Menu.png");
+	main_menu_Texture.setSmooth(1);
 	main_menu_Sprite.setTexture(main_menu_Texture);
 
+	main_menu_noSave_Texture.loadFromFile(game_path + "Assets\\Pictures\\Main_Menu_noSave.png");
+	main_menu_noSave_Texture.setSmooth(1);
+	main_menu_noSave_Sprite.setTexture(main_menu_noSave_Texture);
+
 	options_menu_Texture.loadFromFile(game_path + "Assets\\Pictures\\Options_Menu.png");
+	options_menu_Texture.setSmooth(1);
 	options_menu_Sprite.setTexture(options_menu_Texture);
 
 	options_menu_Controls_Texture.loadFromFile(game_path + "Assets\\Pictures\\Options_Menu_Controls.png");
+	options_menu_Controls_Texture.setSmooth(1);
 	options_menu_Controls_Sprite.setTexture(options_menu_Controls_Texture);
 
 	options_menu_Audio_Texture.loadFromFile(game_path + "Assets\\Pictures\\Options_Menu_Audio.png");
+	options_menu_Audio_Texture.setSmooth(1);
 	options_menu_Audio_Sprite.setTexture(options_menu_Audio_Texture);
 
 	options_menu_Graphics_Texture.loadFromFile(game_path + "Assets\\Pictures\\Options_Menu_Graphics.png");
+	options_menu_Graphics_Texture.setSmooth(1);
 	options_menu_Graphics_Sprite.setTexture(options_menu_Graphics_Texture);
 
 	options_menu_Language_Texture.loadFromFile(game_path + "Assets\\Pictures\\Language_Menu.png");
+	options_menu_Language_Texture.setSmooth(1);
 	options_menu_Language_Sprite.setTexture(options_menu_Language_Texture);
 
 	pause_menu_Mission_Texture.loadFromFile(game_path + "Assets\\Pictures\\Pause_Menu_Mission.png");
+	pause_menu_Mission_Texture.setSmooth(1);
 	pause_menu_Mission_Sprite.setTexture(pause_menu_Mission_Texture);
 
 	pause_menu_Orbit_Texture.loadFromFile(game_path + "Assets\\Pictures\\Pause_Menu_Orbit.png");
+	pause_menu_Orbit_Texture.setSmooth(1);
 	pause_menu_Orbit_Sprite.setTexture(pause_menu_Orbit_Texture);
 
+	confirm_NG_Texture.loadFromFile(game_path + "Assets\\Dialogs\\Dialog_newGame.png");
+	confirm_NG_Texture.setSmooth(1);
+	confirm_NG_Sprite.setTexture(confirm_NG_Texture);
+	
 	mouse_pointer_Texture.loadFromFile(game_path + "Assets\\Pointers\\Mouse_pointer_1.png");
+	mouse_pointer_Texture.setSmooth(1);
 	mouse_pointer_Sprite.setTexture(mouse_pointer_Texture);
 
 };
@@ -81,10 +104,11 @@ int Menu::run(bool pause, bool on_orbit)
 		//рисуем фон
 		bg_main_menu_Sprite.setScale(kx,  ky);
 		main_menu_Sprite.setScale(kx, ky);
-		
+		main_menu_noSave_Sprite.setScale(kx, ky);
 		game_window->clear(sf::Color::Black);
 		game_window->draw(bg_main_menu_Sprite);
-		game_window->draw(main_menu_Sprite);
+		if (gameExists) game_window->draw(main_menu_Sprite);
+			else game_window->draw(main_menu_noSave_Sprite);
 
 		//задаем координаты областей
 		int Continue_area[4] = { int(200.0 * ky), int(300.0 * ky), int(500.0 * kx), int(1420.0 * kx) };//top,bottom,left,right
@@ -101,51 +125,19 @@ int Menu::run(bool pause, bool on_orbit)
 		game_window->draw(mouse_pointer_Sprite);
 		
 		//проверяем нахождение мыши над пунктами меню
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Continue_area[0]))
-			{
-				sf::RectangleShape rectangle(sf::Vector2f(Continue_area[3] - Continue_area[2], Continue_area[1] - Continue_area[0]));
-				rectangle.setFillColor(sf::Color(0, 0, 0, 128));
-				rectangle.setPosition(Continue_area[2], Continue_area[0]);
-				game_window->draw(rectangle);
-			}
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &New_game_area[0])) 
-			{
-				sf::RectangleShape rectangle(sf::Vector2f(New_game_area[3] - New_game_area[2], New_game_area[1] - New_game_area[0]));
-				rectangle.setFillColor(sf::Color(0, 0, 0, 128));
-				rectangle.setPosition(New_game_area[2], New_game_area[0]);
-				game_window->draw(rectangle);
-			}
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Options_area[0]))
-			{
-				sf::RectangleShape rectangle(sf::Vector2f(Options_area[3] - Options_area[2], Options_area[1] - Options_area[0]));
-				rectangle.setFillColor(sf::Color(0, 0, 0, 128));
-				rectangle.setPosition(Options_area[2], Options_area[0]);
-				game_window->draw(rectangle);
-			}
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Language_area[0]))
-			{
-				sf::RectangleShape rectangle(sf::Vector2f(Language_area[3] - Language_area[2], Language_area[1] - Language_area[0]));
-				rectangle.setFillColor(sf::Color(0, 0, 0, 128));
-				rectangle.setPosition(Language_area[2], Language_area[0]);
-				game_window->draw(rectangle);
-			}
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Exit_area[0]))
-			{
-				sf::RectangleShape rectangle(sf::Vector2f(Exit_area[3] - Exit_area[2], Exit_area[1] - Exit_area[0]));
-				rectangle.setFillColor(sf::Color(0, 0, 0, 128));
-				rectangle.setPosition(Exit_area[2], Exit_area[0]);
-				game_window->draw(rectangle);
-			}
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Continue_area[0]) && gameExists) draw_box(&Continue_area[0], sf::Color(0, 0, 0, 128));
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &New_game_area[0])) draw_box(&New_game_area[0], sf::Color(0, 0, 0, 128));
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Options_area[0])) draw_box(&Options_area[0], sf::Color(0, 0, 0, 128));
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Language_area[0])) draw_box(&Language_area[0], sf::Color(0, 0, 0, 128));
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Exit_area[0])) draw_box(&Exit_area[0], sf::Color(0, 0, 0, 128));
 
 		game_window->display();
 
 		//проверяем проверяем нажатие LMB
 		if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
 		{
-			
-			// проверяем нажатие на кнопки
-			
-				if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Continue_area[0]))
+				// проверяем нажатие на кнопки
+				if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Continue_area[0]) && gameExists)
 				{
 					click_block = true;
 					return (1); //продолжить игру
@@ -154,20 +146,24 @@ int Menu::run(bool pause, bool on_orbit)
 				if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &New_game_area[0]))
 				{
 					click_block = true;
-					return (2); //новая игра
+					if (gameExists) Current_Menu = Menu_states::CONFIRM_NEW_GAME;
+					else return (2); //новая игра
 				}
+				
 				if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Options_area[0])) //переключение на меню опций
 				{
 					click_block = true;
 					Current_Menu = Menu_states::OPTIONS_MENU;
 					return(0);//продолжать
 				}
+				
 				if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Language_area[0])) //переключение на меню опций
 				{
 					click_block = true;
 					Current_Menu = Menu_states::LANGUAGE_MENU;
 					return(0);//продолжать
 				}
+				
 				if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Exit_area[0]))
 				{
 					click_block = true;
@@ -695,7 +691,7 @@ int Menu::run(bool pause, bool on_orbit)
 
 	}
 
-	//подменю выболра языка
+	//подменю выбора языка
 	if (Current_Menu == Menu_states::LANGUAGE_MENU)
 	{
 		game_window->clear(sf::Color::Black);
@@ -782,6 +778,64 @@ int Menu::run(bool pause, bool on_orbit)
 
 	}
 
+	//подтверждение начала новой игры
+	if (Current_Menu == Menu_states::CONFIRM_NEW_GAME)
+	{
+		game_window->clear(sf::Color::Black);
+		bg_main_menu_Sprite.setScale(kx, ky);
+		main_menu_Sprite.setScale(kx, ky);
+		game_window->draw(bg_main_menu_Sprite);
+		//game_window->draw(main_menu_Sprite);
+		confirm_NG_Sprite.setScale(kx, ky);
+		game_window->draw(confirm_NG_Sprite);
+
+		//задаем координаты областей
+		int OK_area[4] = { int(759.0 * ky), int(812.0 * ky), int(647.0 * kx), int(867.0 * kx) };//top,bottom,left,right
+		int Cancel_area[4] = { int(759.0 * ky), int(812.0 * ky), int(1052.0 * kx), int(1272.0 * kx) };
+
+		//проверяем координаты мыши
+		// get the local mouse position (relative to a window)
+		sf::Vector2i localPosition = sf::Mouse::getPosition(*game_window);
+		//рисуем курсор
+		mouse_pointer_Sprite.setPosition((float)localPosition.x, (float)localPosition.y);
+		game_window->draw(mouse_pointer_Sprite);
+
+		//проверяем нахождение мыши над пунктами меню
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &OK_area[0]))		draw_box(&OK_area[0], sf::Color(0, 0, 0, 128));
+		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Cancel_area[0]))	draw_box(&Cancel_area[0], sf::Color(0, 0, 0, 128));
+
+		game_window->display();
+
+		//проверяем проверяем нажатие LMB
+		if (sf::Mouse::isButtonPressed(sf::Mouse::Left) && !click_block)
+		{
+
+			// проверяем нажатие на кнопки
+			if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &OK_area[0]))
+			{
+				click_block = true;
+				Current_Menu = Menu_states::MAIN_MENU;
+				return(2);//начинаем новую игру
+			}
+			if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &Cancel_area[0]))
+			{
+				click_block = true;
+				Current_Menu = Menu_states::MAIN_MENU;//обратно в меню
+			}
+		}
+
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && !click_block)
+		{
+			click_block = true;
+			Current_Menu = Menu_states::MAIN_MENU;//выход в меню паузы по кнопке ESC
+		}
+
+		//снимаем блокировку двойных нажатий
+		if (!(sf::Mouse::isButtonPressed(sf::Mouse::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))) click_block = false;
+
+		return (0);//продолжать
+	}
+
 	return(0);
 };
 
@@ -803,4 +857,9 @@ void Menu::draw_box(int* area_coord, sf::Color color)
 	rectangle.setFillColor(color);
 	rectangle.setPosition(area_coord[2], area_coord[0]);
 	game_window->draw(rectangle);
+}
+
+void Menu::set_gameExists(bool state)
+{
+	gameExists = state;
 }
