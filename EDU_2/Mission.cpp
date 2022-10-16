@@ -246,6 +246,8 @@ Mission::Mission(sf::RenderWindow* window, std::string path)
 
 int Mission::run(sf::Time elapsed)
 {
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) return 0;
+	
 	//основной цикл игры
 	render_res_X = floor(game_window->getView().getSize().x);
 	render_res_Y = floor(game_window->getView().getSize().y);
@@ -972,7 +974,22 @@ void Mission::draw_character()
 		//printf("%f\n", Rover.Speed_direction * 180.0 / 3.1415926);
 	}
 
-	
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && 0) 
+	{
+		
+		sf::Vector3f r = find_intersection(Rover.weapon_direction_rad, Rover.player_coord_X, Rover.player_coord_Y, 1000.0);
+		//printf("(x y z) %0.0f %0.0f %0.0f \n", r.x, r.y, r.z);
+		//sf::sleep(sf::milliseconds(100));
+		if (r.z != -1)
+		{
+			sf::RectangleShape health_rectangle(sf::Vector2f(8.0,8.0));
+			health_rectangle.setFillColor(sf::Color::Green);
+			health_rectangle.setOrigin(4.0, 4.0);
+			//health_rectangle.setPosition(r.x * render_res_X / 1920.0, r.y * render_res_Y / 1080.0);
+			health_rectangle.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + r.x / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - r.y / GAME_RENDER_SCALE);
+			game_window->draw(health_rectangle);
+		}
+	}
 }
 
 void Mission::controls_processing(sf::Vector2i localPosition)
@@ -1138,7 +1155,7 @@ void Mission::controls_processing(sf::Vector2i localPosition)
 			//если места в массиве патронов достаточно, создаем еще один
 			//printf("dist_near=%0.0f\n", sqrt((target.x - Rover.player_coord_X) * (target.x - Rover.player_coord_X) + (target.y - Rover.player_coord_Y) * (target.y - Rover.player_coord_Y)));
 			if (player_bullet_count < 100 &&
-				sqrt((target.x - Rover.player_coord_X) * (target.x - Rover.player_coord_X) + (target.y - Rover.player_coord_Y) * (target.y - Rover.player_coord_Y)) < 1800 &&
+				sqrt((target.x - Rover.player_coord_X) * (target.x - Rover.player_coord_X) + (target.y - Rover.player_coord_Y) * (target.y - Rover.player_coord_Y)) < 2200 &&
 				target.z >= 0)
 			{
 					//printf("target # %i\n", (int)target.z);
@@ -1347,7 +1364,7 @@ void Mission::draw_bullets()
 									if (player_bullet_array[i].monters_hit[t] == -1)
 									{
 										player_bullet_array[i].monters_hit[t] = j; //запоминаем пораженного монстра (убираем повторные срабатывания)
-										printf("hit mem %i \n", j);
+										//printf("hit mem %i \n", j);
 										break;
 									}
 								}
@@ -1368,6 +1385,7 @@ void Mission::draw_bullets()
 					//фиксируем попадание
 					player_bullet_array[i].isAlive = 0;//пуля исчезает после попадания
 					player_bullet_count--;
+					
 					if (obj_array[obj - 1].type == 0 || obj_array[obj - 1].type == 1) //попадание в базу или корабль
 					{
 
@@ -1415,6 +1433,7 @@ void Mission::draw_bullets()
 							sound_death_1.play();
 							//выбрасываем ресурсы
 							drop_flying_loot(planet_level * 4, planet_level * 2, planet_level, obj_array[obj - 1].X, obj_array[obj - 1].Y);
+							Rover.collected_money += 20 * planet_level; //деньги
 						}
 					}
 
@@ -1507,19 +1526,14 @@ void Mission::draw_monsters()
 			//рассчитываем расстояние до игрока
 			double dist_to_player = sqrt((Rover.player_coord_X - monster_array[i].X) * (Rover.player_coord_X - monster_array[i].X) + (Rover.player_coord_Y - monster_array[i].Y) * (Rover.player_coord_Y - monster_array[i].Y));
 
-			//меняем направление к игроку
-			monster_array[i].direction = atan2(Rover.player_coord_Y - monster_array[i].Y, Rover.player_coord_X - monster_array[i].X);
+			//меняем направление к игроку если нет рядом препятствия
+			if (check_obj_collision(monster_array[i].X, monster_array[i].Y, 85.0f) == 0) monster_array[i].direction = atan2(Rover.player_coord_Y - monster_array[i].Y, Rover.player_coord_X - monster_array[i].X);
 
-			//если монстр слишком близко - разворот
-			/*if (dist_to_player < monster_array[i].attack_distance * 0.8f)
-			{
-				monster_array[i].direction += PI;
-				monster_array[i].attack_cooldown = monster_array[i].attack_time;//запрет атаки при бегстве
-			}
-			*/
+
+
 
 			//рассчитываем движение
-			if (dist_to_player > monster_array[i].attack_distance && dist_to_player < monster_array[i].chase_distance * 10) //если монстр далеко - движения нет
+			if (dist_to_player > monster_array[i].attack_distance && dist_to_player < 2000 * GAME_RENDER_SCALE) //если монстр далеко - движения нет
 			{
 				//Проверка на коллизии
 				int pendulum = 1; // (int)((rand() % 2 - 0.5f) * 2); //маятник
@@ -1527,10 +1541,12 @@ void Mission::draw_monsters()
 				{
 					//просчитываем начальное направление + отклонения в обе стороны если монстр попадает в объект
 					monster_array[i].direction += D_angle * pendulum;
+					
 					double new_X = monster_array[i].X + monster_array[i].moving_speed * cos(monster_array[i].direction) * elapsed_ms / 1000;
 					double new_Y = monster_array[i].Y + monster_array[i].moving_speed * sin(monster_array[i].direction) * elapsed_ms / 1000;
 
 					//определяем наличие коллизии
+					/*
 					if (check_obj_collision(new_X, new_Y, 80.0f) == 0)
 					{
 						monster_array[i].Y = new_Y;
@@ -1538,7 +1554,20 @@ void Mission::draw_monsters()
 						break;
 					}
 					else monster_array[i].moving_speed *= 1.00f; //замедляемся при столкновении
-
+					
+					*/
+					//определяем наличие коллизии
+					sf::Vector3f r = find_intersection(monster_array[i].direction, monster_array[i].X, monster_array[i].Y, 400.0);
+					if (r.z == -1)
+						{
+							if (check_obj_collision(new_X, new_Y, 80.0f) == 0)
+							{
+								monster_array[i].Y = new_Y;
+								monster_array[i].X = new_X;
+								break;
+							}
+							else monster_array[i].moving_speed *= 1.00f; //замедляемся при столкновении
+						}
 					pendulum *= -1;
 				}
 			}
@@ -1550,9 +1579,7 @@ void Mission::draw_monsters()
 			double top = (render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y) * GAME_RENDER_SCALE;
 			double bottom = top - render_res_Y * GAME_RENDER_SCALE;
 
-
 			//если монстр вблизи - рисуем его
-			//if (abs(monster_array[i].X - Rover.player_coord_X) < render_res_X * GAME_RENDER_SCALE && abs(monster_array[i].Y - Rover.player_coord_Y) < render_res_Y * GAME_RENDER_SCALE)
 			if (monster_array[i].X > left - 200 && monster_array[i].X < right + 200 && monster_array[i].Y > bottom - 200 && monster_array[i].Y < top + 200)
 			{
 				monster_array[i].anim_time += elapsed_ms;
@@ -1578,6 +1605,17 @@ void Mission::draw_monsters()
 					game_window->draw(VFX_Sprite);
 				}
 
+				//рисуем № монстра для отладки
+
+				text.setCharacterSize(15 * render_res_X / 1920.0); // in pixels, not points!
+				text.setFillColor(sf::Color::Red);
+				//text.setStyle(sf::Text::Bold | sf::Text::Underlined);
+				char buffer[50];
+				sprintf_s(buffer, "%i", i);
+				text.setOrigin(text.getLocalBounds().width / 2.0, text.getLocalBounds().height / 2.0);
+				text.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + monster_array[i].X / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - monster_array[i].Y / GAME_RENDER_SCALE - 150.0 / GAME_RENDER_SCALE);
+				text.setString(buffer);
+				game_window->draw(text);
 				
 				//проверяем наличие включенного щита
 				int shield_power = 0;
@@ -1590,7 +1628,6 @@ void Mission::draw_monsters()
 				}
 
 				//проверяем на попадание в силовое поле
-				//double dist_to_player = sqrt((monster_array[i].X - Rover.player_coord_X) * (monster_array[i].X - Rover.player_coord_X) + (monster_array[i].Y - Rover.player_coord_Y) * (monster_array[i].Y - Rover.player_coord_Y));
 				bool in_shield = false;
 				if (dist_to_player < 250.0 && shield_power > 0) in_shield = true;
 
@@ -1628,7 +1665,21 @@ void Mission::draw_monsters()
 				monster_array[i].attack_cooldown -= elapsed_ms;
 
 				//атака монстра
-				if (monster_array[i].attack_cooldown <= 0 && dist_to_player < monster_array[i].attack_distance && (monster_array[i].X > left && monster_array[i].X < right && monster_array[i].Y > bottom && monster_array[i].Y < top) && (Rover.Health > 0) && monster_array[i].health > 0)
+				//проверяем наличие объектов перед игроком
+				sf::Vector3f r = find_intersection(monster_array[i].direction, monster_array[i].X, monster_array[i].Y, 1000.0);
+				bool monster_attack = false;
+				if (r.z == -1) monster_attack = true;
+				else 
+				{
+					double dist_to_obj = sqrt((monster_array[i].X - r.x) * (monster_array[i].X - r.x) + (monster_array[i].Y - r.y) * (monster_array[i].Y - r.y));
+					if (dist_to_obj > dist_to_player)
+					{
+						monster_attack = true;
+				
+					}
+				}
+				printf("#%i direct=%0.2f r.z=%0.0f\n", i, monster_array[i].direction, r.z);
+				if (monster_attack && monster_array[i].attack_cooldown <= 0 && dist_to_player < monster_array[i].attack_distance && (monster_array[i].X > left && monster_array[i].X < right && monster_array[i].Y > bottom && monster_array[i].Y < top) && (Rover.Health > 0) && monster_array[i].health > 0)
 				{
 					//производим атаку расстояние до игрока меньше дальности атаки
 					monster_array[i].attack_cooldown = monster_array[i].attack_time; //перезарядка таймера
@@ -2096,6 +2147,7 @@ void Mission::generate_stationary_obj()
 		obj_array[i].size_X = 200;
 		obj_array[i].size_Y = 200;
 		obj_array[i].Health = 100;
+		obj_array[i].Health_MAX = 100;
 	}
 
 	//создаем гнезда выхода 17-30
@@ -2107,7 +2159,8 @@ void Mission::generate_stationary_obj()
 		obj_array[i].Y = sin(i * 2 * 3.1415 / 14 + 20.0) * 25000.0;
 		obj_array[i].size_X = 200;
 		obj_array[i].size_Y = 200;
-		obj_array[i].Health = 100;
+		obj_array[i].Health = 200;
+		obj_array[i].Health_MAX = 200;
 	}
 
 
@@ -2146,7 +2199,22 @@ void Mission::draw_stationary_obj()
 				nest_Sprite.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + obj_array[i].X / GAME_RENDER_SCALE, render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - obj_array[i].Y / GAME_RENDER_SCALE);
 				nest_Sprite.setScale(sf::Vector2f(1.0 / GAME_RENDER_SCALE, 1.0 / GAME_RENDER_SCALE));
 				game_window->draw(nest_Sprite);
-				
+
+				//рисуем здоровье гнезда
+				double bar_Width = 200 * render_res_X / 1920.0;
+				double bar_Height = 10 * render_res_Y / 1080.0;
+
+				sf::RectangleShape health_rectangle(sf::Vector2f(bar_Width * (obj_array[i].Health/ obj_array[i].Health_MAX), bar_Height));
+				health_rectangle.setFillColor(sf::Color::Red);
+				health_rectangle.setPosition(render_res_X / 2 + Rover.player_offset_X - Rover.player_coord_X / GAME_RENDER_SCALE + obj_array[i].X / GAME_RENDER_SCALE - bar_Width / 2.0,
+											 render_res_Y / 2 + Rover.player_coord_Y / GAME_RENDER_SCALE - Rover.player_offset_Y - obj_array[i].Y / GAME_RENDER_SCALE - obj_array[i].size_Y / GAME_RENDER_SCALE - bar_Height);
+				game_window->draw(health_rectangle);
+				health_rectangle.setSize(sf::Vector2f(bar_Width , bar_Height));
+				health_rectangle.setOutlineColor(sf::Color::White);
+				health_rectangle.setFillColor(sf::Color(0,0,0,0));
+				health_rectangle.setOutlineThickness(2);
+				game_window->draw(health_rectangle);
+
 				//генерация монстров при приближении игрока
 				obj_array[i].spec_data -= elapsed_ms;
 				if (obj_array[i].spec_data < 0) obj_array[i].spec_data = 0;
@@ -2173,7 +2241,7 @@ void Mission::draw_stationary_obj()
 									double direction = atan2(Rover.player_coord_Y - obj_array[i].Y, Rover.player_coord_X - obj_array[i].X);
 									spawn_monster(j, obj_array[i].X + cos(direction) * 300, obj_array[i].Y + sin(direction) * 300);
 									obj_array[i].spec_data = 2000; //таймер
-									printf("spawn monster (nest)\n");
+									//printf("spawn monster (nest)\n");
 									break;
 								}
 							}
@@ -2286,102 +2354,6 @@ int Mission::check_obj_collision(double X, double Y, double offset)
 	return 0;
 }
 
-int Mission::evacuate()  //DEL
-{
-	double int_scale_x = render_res_X / 1920.0;
-	double int_scale_y = render_res_Y / 1080.0;
-	sf::Sprite screenshot_Sprite;
-
-	screenshot_Sprite.setTexture(screenshot_Texture);
-	screenshot_Sprite.setColor(sf::Color(255, 255, 255, 50));
-	game_window->clear();
-	game_window->draw(screenshot_Sprite);
-
-	//диалоговое окно
-	sf::Vector2f dialog_center(render_res_X / 2.0, render_res_Y / 2.0); //позиция окна  // удалить
-	evac_dialog_Sprite.setOrigin(evac_dialog_Sprite.getLocalBounds().width / 2.0, evac_dialog_Sprite.getLocalBounds().height / 2.0);
-	evac_dialog_Sprite.setPosition(dialog_center);
-	evac_dialog_Sprite.setScale(int_scale_x, int_scale_y);
-	game_window->draw(evac_dialog_Sprite);
-
-	//рисуем курсор
-	sf::Vector2i localPosition = sf::Mouse::getPosition(*game_window);
-	mouse_pointer_Sprite.setPosition((float)localPosition.x, (float)localPosition.y);
-	game_window->draw(mouse_pointer_Sprite);
-	game_window->display();
-
-	//проверяем нажатие кнопок
-	int take_weapon_area[4] = { render_res_Y / 2 + 255 * int_scale_y, render_res_Y / 2 + 297 * int_scale_y, render_res_X / 2 - 406 * int_scale_x, render_res_X / 2 - 111 * int_scale_x };//top,bottom,left,right
-	int take_res_area[4] = { render_res_Y / 2 + 255 * int_scale_y, render_res_Y / 2 + 297 * int_scale_y, render_res_X / 2 + 95 * int_scale_x, render_res_X / 2 + 391 * int_scale_x };//top,bottom,left,right
-
-
-	if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-	{
-		//printf("%i  %i \n", localPosition.x, localPosition.y);
-
-		// проверяем нажатие на кнопки
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &take_weapon_area[0]))
-		{
-			printf("weapon_taken_OK \n");
-			music_action.stop();
-			return (1);//убираем диалог и продолжаем игру дальше
-		}
-
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &take_res_area[0]))
-		{
-			printf("resourse_taken_OK \n");
-			music_action.stop();
-			return (1);//убираем диалог и продолжаем игру дальше
-		}
-	}
-
-	//sf::sleep(sf::milliseconds(1000));
-	return (0);//продолжаем выполнение подпрограммы
-
-}
-
-int Mission::in_base()  //DEL
-{
-	double int_scale_x = render_res_X / 1920.0;
-	double int_scale_y = render_res_Y / 1080.0;
-	sf::Sprite screenshot_Sprite;
-
-	screenshot_Sprite.setTexture(screenshot_Texture);
-	screenshot_Sprite.setColor(sf::Color(255, 255, 255, 50));
-	game_window->clear();
-	game_window->draw(screenshot_Sprite);
-
-	//диалоговое окно
-	sf::Vector2f dialog_center(render_res_X / 2.0, render_res_Y / 2.0); //позиция окна  // удалить
-	base_dialog_Sprite.setOrigin(base_dialog_Sprite.getLocalBounds().width / 2.0, base_dialog_Sprite.getLocalBounds().height / 2.0);
-	base_dialog_Sprite.setPosition(dialog_center);
-	base_dialog_Sprite.setScale(int_scale_x, int_scale_y);
-	game_window->draw(base_dialog_Sprite);
-
-	//рисуем курсор
-	sf::Vector2i localPosition = sf::Mouse::getPosition(*game_window);
-	mouse_pointer_Sprite.setPosition((float)localPosition.x, (float)localPosition.y);
-	game_window->draw(mouse_pointer_Sprite);
-	game_window->display();
-
-	//проверяем нажатие кнопок
-	int RUN_area[4] = { render_res_Y / 2 + 333 * int_scale_y, render_res_Y / 2 + 381 * int_scale_y, render_res_X / 2 - 180 * int_scale_x, render_res_X / 2 + 141 * int_scale_x };//top,bottom,left,right
-	//int take_res_area[4] = { render_res_Y / 2 + 255 * int_scale_y, render_res_Y / 2 + 297 * int_scale_y, render_res_X / 2 + 95 * int_scale_x, render_res_X / 2 + 391 * int_scale_x };//top,bottom,left,right
-
-	if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
-	{
-		//printf("%i  %i \n", localPosition.x, localPosition.y);
-
-		// проверяем нажатие на кнопки
-		if (check_mouse_hover((int)localPosition.x, (int)localPosition.y, &RUN_area[0]))
-		{
-			printf("RUN \n");
-			return (1);//убираем диалог и продолжаем игру дальше
-		}
-	}
-	//sf::sleep(sf::milliseconds(1000));
-	return (0);//продолжаем выполнение подпрограммы
-}
 
 int Mission::player_death()  //DEL
 {
@@ -2549,6 +2521,8 @@ void Mission::reset_world()
 		obj_array[i].X = 0.0;
 		obj_array[i].Y = 0.0;
 		obj_array[i].spec_data = 0;
+		obj_array[i].Health = 0.0;
+		obj_array[i].Health_MAX = 0.0;
 	}
 
 	generate_stationary_obj();//создаем ключевые объекты
@@ -2763,7 +2737,7 @@ void Mission::get_resources(int *res_arr)
 	Rover.collected_metal += res_arr[1];
 	Rover.collected_crystal += res_arr[2];
 	Rover.collected_uran += res_arr[3];
-	printf("Got res (%i %i %i %i )\n", res_arr[0], res_arr[1], res_arr[2], res_arr[3]);
+	//printf("Got res (%i %i %i %i )\n", res_arr[0], res_arr[1], res_arr[2], res_arr[3]);
 }
 
 int Mission::get_weapon_to_take() {	return weapon_to_take; }
@@ -3064,22 +3038,79 @@ sf::Vector3f Mission::find_nearest_enemy()
 	};
 
 	Enemy nearest_enemy;
-
+	//printf("============\n");
 	for (int i = 0; i < 1000; ++i)
 	{
-
 		if (monster_array[i].isAlive == 1) // проверяем жив ли монстр
 		{
+			
+			//printf("#%i - ", i);
 			//рассчитываем расстояние до игрока
-			double dist_to_player = sqrt((Rover.player_coord_X - monster_array[i].X) * (Rover.player_coord_X - monster_array[i].X) + (Rover.player_coord_Y - monster_array[i].Y) * (Rover.player_coord_Y - monster_array[i].Y));
+			double dist_to_monster = sqrt((Rover.player_coord_X - monster_array[i].X) * (Rover.player_coord_X - monster_array[i].X) + (Rover.player_coord_Y - monster_array[i].Y) * (Rover.player_coord_Y - monster_array[i].Y));
+
+			if (nearest_enemy.number != -1 && (dist_to_monster - monster_array[i].attack_distance) >= nearest_enemy.dist) 
+				{ 
+					//printf("skip1\n");  
+					continue; //пропускаем если более ближний враг уже найден
+				} 
 
 			if (nearest_enemy.number == -1)
 			{
-				nearest_enemy.number = i;
-				nearest_enemy.dist = dist_to_player - monster_array[i].attack_distance;
+				double angle_to_enemy = atan2(monster_array[i].Y - Rover.player_coord_Y, monster_array[i].X - Rover.player_coord_X);
+				if (angle_to_enemy < 0.0) angle_to_enemy += 3.1415926;
+				sf::Vector3f r = find_intersection(angle_to_enemy, Rover.player_coord_X, Rover.player_coord_Y, 3000.0);
+				
+				if (r.z != -1)
+				{
+					//printf("point 1 - ");
+					double dist_to_obj = sqrt((Rover.player_coord_X - r.x)* (Rover.player_coord_X - r.x) + (Rover.player_coord_Y - r.y)* (Rover.player_coord_Y - r.y));
+					if (dist_to_obj > dist_to_monster)
+					{
+						//printf("point 2 - ");
+						//препятсвие дальше монстра
+						nearest_enemy.number = i;
+						nearest_enemy.dist = dist_to_monster - monster_array[i].attack_distance;
+					}
+					else { 
+						//printf("point 3\n"); 
+						continue; } //препятствие ближе
+				}
+				else
+				{
+					//нет препятствий
+					//printf("point 4 \n");
+					nearest_enemy.number = i;
+					nearest_enemy.dist = dist_to_monster - monster_array[i].attack_distance;
+					continue; 
+				}
 			}
-
-			if (dist_to_player < nearest_enemy.dist) {nearest_enemy.number = i; nearest_enemy.dist = dist_to_player - monster_array[i].attack_distance;}
+			//printf("point 5 \n");
+			if ((dist_to_monster - monster_array[i].attack_distance) < nearest_enemy.dist)
+			{
+				double angle_to_enemy = atan2(monster_array[i].Y - Rover.player_coord_Y, monster_array[i].X - Rover.player_coord_X);
+				if (angle_to_enemy < 0.0) angle_to_enemy += 2.0 * 3.1415926;
+				sf::Vector3f r = find_intersection(angle_to_enemy, Rover.player_coord_X, Rover.player_coord_Y, 3000.0);
+				//printf("find i=%i x=%0.0f y=%0.0f z=%0.0f angle=%0.1f \n", i, r.x, r.y, r.z, angle_to_enemy);
+				if (r.z != -1)
+				{
+					//printf("point 6 - ");
+					double dist_to_obj = sqrt((Rover.player_coord_X - r.x) * (Rover.player_coord_X - r.x) + (Rover.player_coord_Y - r.y) * (Rover.player_coord_Y - r.y));
+					if (dist_to_obj > dist_to_monster)
+					{
+						//препятсвие дальше монстра
+						nearest_enemy.number = i;
+						nearest_enemy.dist = dist_to_monster - monster_array[i].attack_distance;
+						//printf("point 7\n");
+						continue;
+					}
+				}
+				else
+				{
+					nearest_enemy.number = i; 
+					nearest_enemy.dist = dist_to_monster - monster_array[i].attack_distance;
+					//printf("point 8 - ");
+				}
+			}
 		}
 	}
 	//printf("find %i %0.0f %0.0f\n", nearest_enemy.number, monster_array[nearest_enemy.number].X, monster_array[nearest_enemy.number].Y);
@@ -3088,16 +3119,243 @@ sf::Vector3f Mission::find_nearest_enemy()
 		target.x = monster_array[nearest_enemy.number].X;
 		target.y = monster_array[nearest_enemy.number].Y;
 		target.z = (float)nearest_enemy.number;
+		
 	}
 	else
 	{
 		target.x = 0;
 		target.y = 0;
 		target.z = -1;
+		
 	}
-
-	//printf("%i %0.0f %0.0f\n", monster_array[nearest_enemy.number].isAlive, monster_array[nearest_enemy.number].health, monster_array[nearest_enemy.number].power);
-	
+	//printf("\n");
+	//printf("num=%i X=%0.0f Y=%0.0f Z(num)=%i dist_to_en=%0.0f\n", nearest_enemy.number, target.x, target.y, (int)target.z, nearest_enemy.dist);
+	//sf:sleep(sf::milliseconds(100));
+	//printf("=====END=============\n");
 	
 	return target;
+}
+
+sf::Vector3f Mission::find_intersection(double angle_rad, double X, double Y, double dist)
+{
+	//находим точку пересечения с ближайшим объектом и возвращаем ее координаты и тип объекта
+
+	//angle_rad = acos(0) * 3.0;
+	//X = 400;
+	//Y = 500;
+	//dist = 1000;
+	
+
+	sf::Vector3f result{ 0.0,0.0,-1.0 };
+	int type = 0;
+	
+	for (int i = 0; i < 100; ++i)
+	{
+		if (obj_array[i].isValid == 1)
+		{
+			sf::Vector3f cross_dot{ 0.0,0.0,-1.0 }; // z - расстояние от точки (X1,Y1) до пересечения, если z=-1 пересечения нет
+			//находим точку пересечения с каждой стороной	(double X11, double Y11, double X12, double Y12, double X21, double Y21, double X22, double Y22)
+
+			// левая вертикальная сторона
+			//printf("left (%0.0f %0.0f %0.0f %0.0f) (%0.0f %0.0f %0.0f %0.0f)\n", X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0, obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0);
+			sf::Vector3f result1 = find_line_cross(X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0, obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0);
+			
+			cross_dot = result1;
+
+			// верхняя сторона
+			//printf("top (%0.0f %0.0f %0.0f %0.0f) (%0.0f %0.0f %0.0f %0.0f)\n", X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0, obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0);
+			sf::Vector3f result2 = find_line_cross(X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0, obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0);
+
+			if(result2.z != -1 && (result2.z < cross_dot.z || cross_dot.z == -1)) cross_dot = result2;
+
+			// правая вертикальная сторона
+			//printf("right (%0.0f %0.0f %0.0f %0.0f) (%0.0f %0.0f %0.0f %0.0f)\n", X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0, obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0);
+			sf::Vector3f result3 = find_line_cross(X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0, obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y + obj_array[i].size_Y / 2.0);
+
+			if (result3.z != -1 && (result3.z < cross_dot.z || cross_dot.z == -1)) cross_dot = result3;
+
+			// нижняя сторона
+			//printf("bottom (%0.0f %0.0f %0.0f %0.0f) (%0.0f %0.0f %0.0f %0.0f)\n", X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0, obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0);
+			sf::Vector3f result4 = find_line_cross(X, Y, X + dist * cos(angle_rad), Y + dist * sin(angle_rad), obj_array[i].X - obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0, obj_array[i].X + obj_array[i].size_X / 2.0, obj_array[i].Y - obj_array[i].size_Y / 2.0);
+
+			if (result4.z != -1 && (result4.z < cross_dot.z || cross_dot.z == -1)) cross_dot = result4;
+
+			
+			if ((cross_dot.z != -1 && cross_dot.z < result.z) || result.z == -1)
+			{
+				result = cross_dot; 
+				type = obj_array[i].type;
+			}
+			
+			/*
+			obj_array[i].type = 1; //тип корабль / точка выхода
+			obj_array[i].X = cos(i * 2 * 3.1415 / 8) * 15000.0;
+			obj_array[i].Y = sin(i * 2 * 3.1415 / 8) * 15000.0;
+			obj_array[i].size_X = 318;
+			obj_array[i].size_Y = 582;
+			*/
+		}
+		
+		//result.z = (float)obj_array[i].type;
+	}
+	if (result.z != -1) result.z = (float)type;
+	
+	return result;
+}
+
+
+sf::Vector3f Mission::find_line_cross(double X11, double Y11, double X12, double Y12, double X21, double Y21, double X22, double Y22)
+{
+	
+	//X12 = X11;
+	sf::Vector3f result{ 0.0,0.0,-1.0 };
+
+	//X21 = X11; X22 = X11;
+	//X12 = X11;
+	
+	if (X11 == X12)
+	{
+		//линия 1 вертикальная
+		if (X21 == X22)
+		{
+			//обе линии вертикальные
+
+			if (X11 == X21)
+			{
+				//проверяем на пересечение отрезков
+				if ((Y11 > fmax(Y21, Y22) && Y12 > fmax(Y21, Y22)) || (Y11 < fmin(Y21, Y22) && Y12 < fmin(Y21, Y22)))
+				{
+					//пересечений нет
+					//printf("1&2 vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+					return result;
+				}
+				else
+				{
+					//находим пересечение, ближайшее к Y11 (первой точке)
+
+					//если отрезок 1 входит в 2, то точка пересечения в начале X11,Y11, а расстояние = 0
+					if (fmin(Y11, Y12) > fmin(Y21, Y22) && fmax(Y11, Y12) < fmax(Y21, Y22))
+					{
+						result.x = X11;
+						result.y = Y11;
+						result.z = 0.0;
+						//printf("1&2 vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+						return result;
+					}
+					else
+					{
+						//если пересечение частичное, то ищем ближайшую из точек Y21, Y22
+						if (Y11 > fmin(Y21, Y22) && Y11 < fmax(Y21, Y22))
+						{
+							// если отрезок 1 начинается внутри отрезка 2, то точка пересечения в начале X11,Y11, а расстояние = 0
+							result.x = X11;
+							result.y = Y11;
+							result.z = 0.0;
+							//printf("1&2 vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+							return result;
+						}
+						else
+						{
+							// считаем расстояние до ближайшей точки отрезка 2
+							if (abs(Y11 - Y21) > abs(Y11 - Y22))
+							{
+								//ближайшая точка Y22
+								result.x = X11;
+								result.y = Y22;
+								result.z = abs(Y11 - Y22);
+								//printf("1&2 vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+								return result;
+							}
+							else
+							{
+								//ближайшая точка Y21
+								result.x = X11;
+								result.y = Y21;
+								result.z = abs(Y11 - Y21);
+								//printf("1&2 vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+								return result;
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				//printf("1&2 vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+				return result; // линии параллельны, пересечеий нет
+			}
+			
+		}
+		else
+		{
+			double k2 = (Y22 - Y21) / (X22 - X21);
+			double d2 = (X22 * Y21 - X21 * Y22) / (X22 - X21);
+
+			//в уравнение линии 2 подставляем значение X1 (точка пересечений линией 1 оси Х)
+			result.x = X11;
+			result.y = k2 * X11 + d2;
+			
+			//рассчет попадания в отрезок
+			if (result.y >= fmin(Y11, Y12) && result.y <= fmax(Y11, Y12) && result.y >= fmin(Y21, Y22) && result.y <= fmax(Y21, Y22))
+			{
+				result.z = sqrt((result.x - X11) * (result.x - X11) + (result.y - Y11) * (result.y - Y11));
+			}
+			else
+			{
+				result.z = -1;
+			}
+			//printf("weapon vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+			return result;
+		}
+
+	}
+	else
+	{
+		double k1 = (Y12 - Y11) / (X12 - X11); //кроме вертикальных линий
+		double d1 = (X12 * Y11 - X11 * Y12) / (X12 - X11);
+
+		if (X21 == X22)
+		{
+			//вторая линия вертикальная
+
+			//в уравнение линии 2 подставляем значение X1 (точка пересечений линией 1 оси Х)
+			result.x = X21;
+			result.y = k1 * X21 + d1;
+			
+			//рассчет попадания в отрезок
+			if (result.y >= fmin(Y11, Y12) && result.y <= fmax(Y11, Y12) && result.y >= fmin(Y21, Y22) && result.y <= fmax(Y21, Y22))
+			{
+				result.z = sqrt((result.x - X11) * (result.x - X11) + (result.y - Y11) * (result.y - Y11));
+			}
+			else
+			{
+				result.z = -1;
+			}
+			
+			//printf("obj vert: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+			return result;
+
+		}
+		else
+		{
+			double k2 = (Y22 - Y21) / (X22 - X21);
+			double d2 = (X22 * Y21 - X21 * Y22) / (X22 - X21);
+
+			//точка Х на прямых
+			result.x = (d2 - d1) / (k1 - k2);
+			result.y = k1 * (d2 - d1) / (k1 - k2) + d1;
+
+			//рассчет попадания в отрезок
+			if (result.y >= fmin(Y11, Y12) && result.y <= fmax(Y11, Y12) && result.x >= fmin(X11, X12) && result.x <= fmax(X11, X12) && result.y >= fmin(Y21, Y22) && result.y <= fmax(Y21, Y22) && result.x >= fmin(X21, X22) && result.x <= fmax(X21, X22))
+			{
+				result.z = sqrt((result.x - X11) * (result.x - X11) + (result.y - Y11) * (result.y - Y11));
+			}
+			else
+			{
+				result.z = -1;
+			}
+			//printf("norm: X = %0.0f  Y = %0.0f Z = %0.0f\n", result.x, result.y, result.z);
+		}
+	}
+	return result;
 }

@@ -203,6 +203,7 @@ private:
 		double X;
 		double Y;
 		double Health;
+		double Health_MAX;
 		int spec_data;
 	};
 	stationary_object* obj_array;
@@ -409,6 +410,8 @@ private:
 	void draw_flying_grenades();
 	void draw_shield();
 	sf::Vector3f find_nearest_enemy();
+	sf::Vector3f find_intersection(double rad, double X, double Y, double dist);
+	sf::Vector3f find_line_cross(double X11, double Y11, double X12, double Y12, double X21, double Y21, double X22, double Y22);
 
 public:
 	Mission(sf::RenderWindow *window, std::string path);
